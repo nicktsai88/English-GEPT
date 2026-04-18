@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GEPT 中級寫作模擬訓練平台</title>
+    <title>GEPT 中級寫作模擬平台</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        warm: {
-                            50: '#fffbeb',
-                            100: '#fef3c7',
-                            200: '#fde68a',
-                            300: '#fcd34d',
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                            700: '#b45309',
-                            800: '#92400e',
-                            900: '#78350f',
+                        gept: {
+                            light: '#FFF7ED', // orange-50
+                            base: '#FFEDD5',  // orange-100
+                            primary: '#F97316', // orange-500
+                            dark: '#C2410C',  // orange-700
+                            text: '#431407'   // orange-950
                         }
                     }
                 }
@@ -29,505 +27,728 @@
         }
     </script>
     <style>
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang TC', 'Heiti TC', 'Microsoft JhengHei', sans-serif;
-            background-color: #fffbeb; /* warm-50 */
-        }
-        .instruction-text {
-            line-height: 1.8;
-        }
-        /* Custom Scrollbar for a polished look */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #fef3c7; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #fcd34d; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #fbbf24; 
-        }
-        .loading-dots:after {
-            content: '.';
-            animation: dots 1.5s steps(5, end) infinite;
-        }
-        @keyframes dots {
-            0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
-            40% { color: inherit; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
-            60% { text-shadow: .25em 0 0 inherit, .5em 0 0 rgba(0,0,0,0); }
-            80%, 100% { text-shadow: .25em 0 0 inherit, .5em 0 0 inherit; }
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #FFF7ED; color: #431407; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.875rem; }
+        .day-header { font-weight: bold; color: #C2410C; text-align: center; padding: 4px; }
+        .day-empty { background-color: transparent; }
+        .day-normal { background-color: #FFEDD5; color: #431407; }
+        .day-completed { background-color: #F97316; color: white; font-weight: bold; position: relative; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3); }
+        .day-completed::after { content: '★'; position: absolute; top: 2px; right: 2px; font-size: 0.6rem; color: #FEF08A; }
+        
+        .loader { border: 4px solid #FFEDD5; border-top: 4px solid #F97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #FFEDD5; }
+        ::-webkit-scrollbar-thumb { background: #FDBA74; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #F97316; }
     </style>
 </head>
-<body class="text-warm-900 min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-warm-600 text-white shadow-md py-4 px-6 md:px-12 flex items-center justify-between sticky top-0 z-10">
-        <div class="flex items-center gap-3">
-            <i class="fas fa-pen-fancy text-2xl"></i>
-            <h1 class="text-xl md:text-2xl font-bold tracking-wider">GEPT 中級寫作模擬訓練</h1>
-        </div>
-        <div class="text-sm bg-warm-700 px-3 py-1 rounded-full border border-warm-500">
-            <i class="fas fa-graduation-cap mr-1"></i> 專業培訓版
+    <!-- Top Navigation -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-pen-nib text-gept-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gept-text cursor-pointer" onclick="appState.showView('dashboard')">GEPT 寫作模擬平台</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="connection-status" class="flex items-center gap-2 text-sm">
+                    <div class="w-3 h-3 rounded-full bg-gray-400" id="status-light"></div>
+                    <span id="status-text" class="text-gray-600 hidden sm:inline">初始化中...</span>
+                </div>
+                <div id="header-user" class="hidden items-center gap-2 font-medium text-gept-dark bg-gept-base px-3 py-1 rounded-full">
+                    <i class="fas fa-user-circle text-lg"></i>
+                    <span id="header-username"></span>
+                    <button onclick="logout()" class="ml-2 text-xs text-red-500 hover:text-red-700" title="登出"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow flex flex-col md:flex-row max-w-7xl mx-auto w-full p-4 md:p-6 gap-6">
-        
-        <!-- Sidebar / Question Selector -->
-        <aside class="w-full md:w-1/4 bg-white rounded-xl shadow-sm border border-warm-200 p-4 h-fit">
-            <h2 class="text-lg font-bold text-warm-800 mb-4 pb-2 border-b border-warm-200">
-                <i class="fas fa-list-ul mr-2"></i>選擇試題
-            </h2>
-            <div id="question-list" class="flex flex-col gap-2">
-                <!-- Question buttons will be generated here -->
-            </div>
-            <div class="mt-8 p-4 bg-warm-50 rounded-lg border border-warm-100 text-sm text-warm-700">
-                <h3 class="font-bold mb-2"><i class="fas fa-info-circle mr-1"></i>測驗提示</h3>
-                <ul class="list-disc pl-4 space-y-1">
-                    <li>長度約 120 字 (8至12個句子)。</li>
-                    <li>評分重點：內容、組織、文法、用字遣詞、標點符號、大小寫。</li>
-                </ul>
-            </div>
-        </aside>
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8 relative">
 
-        <!-- Editor Area -->
-        <section class="w-full md:w-3/4 flex flex-col gap-6">
+        <!-- 1. Login View -->
+        <div id="login-view" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-lg border border-orange-100 view-section">
+            <h2 class="text-2xl font-bold text-center text-gept-dark mb-6">歡迎使用寫作平台</h2>
             
-            <!-- Question Display -->
-            <div class="bg-white rounded-xl shadow-sm border border-warm-200 p-6 md:p-8">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 id="question-title" class="text-xl md:text-2xl font-bold text-warm-800">例題 I</h2>
-                    <span id="question-type-badge" class="bg-warm-100 text-warm-700 px-3 py-1 rounded-full text-sm font-semibold border border-warm-300">一般寫作</span>
-                </div>
-                
-                <div class="instruction-text mb-6">
-                    <p class="font-bold mb-2">說明：</p>
-                    <p id="question-instruction" class="text-gray-700 text-justify"></p>
-                </div>
-
-                <div class="instruction-text bg-warm-50 p-5 rounded-lg border-l-4 border-warm-500">
-                    <p class="font-bold mb-2 text-warm-800">提示：</p>
-                    <div id="question-prompt" class="text-gray-800 text-lg"></div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">請輸入您的姓名登入：</label>
+                <div class="flex gap-2">
+                    <input type="text" id="login-name" class="flex-grow px-4 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light" placeholder="例如：王小明">
+                    <button onclick="handleLogin()" class="bg-gept-primary text-white px-6 py-2 rounded-lg hover:bg-gept-dark transition-colors shadow-md font-medium">登入</button>
                 </div>
             </div>
 
-            <!-- Writing Area -->
-            <div class="bg-white rounded-xl shadow-sm border border-warm-200 p-6 md:p-8 flex flex-col">
-                <div class="flex justify-between items-end mb-2">
-                    <label for="user-essay" class="font-bold text-warm-800 text-lg">
-                        <i class="fas fa-keyboard mr-2"></i>作答區
-                    </label>
-                    <span class="text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        字數：<span id="word-count" class="text-warm-600 font-bold">0</span> / ~120
-                    </span>
+            <div class="border-t border-orange-100 pt-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-4 flex items-center gap-2">
+                    <i class="fas fa-bolt text-yellow-500"></i> 快速登入 (點擊頭像)
+                </h3>
+                <div id="quick-login-list" class="flex flex-wrap gap-3">
+                    <div class="text-sm text-gray-400 italic">載入中...</div>
                 </div>
-                
-                <textarea id="user-essay" rows="10" 
-                    class="w-full p-4 border border-warm-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500 outline-none resize-y text-lg text-gray-800 leading-relaxed transition-shadow"
-                    placeholder="請在此輸入您的英文作文..."></textarea>
-                
-                <div class="flex flex-wrap items-center justify-between mt-4 gap-4">
-                    <button id="toggle-sample-btn" onclick="toggleSample()" class="px-4 py-2 text-warm-700 bg-warm-100 hover:bg-warm-200 font-semibold rounded-lg transition-colors flex items-center gap-2 border border-warm-300">
-                        <i class="fas fa-eye"></i> <span>顯示範例文章</span>
-                    </button>
+            </div>
+        </div>
+
+        <!-- 2. Dashboard View (Calendar & Question List) -->
+        <div id="dashboard-view" class="hidden view-section space-y-6">
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Left: Calendar Profile -->
+                <div class="w-full md:w-1/3 bg-white p-6 rounded-2xl shadow-md border border-orange-100">
+                    <div class="text-center mb-6">
+                        <div class="w-20 h-20 bg-gept-base rounded-full mx-auto flex items-center justify-center text-gept-primary text-3xl mb-3 shadow-inner">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <h2 class="text-xl font-bold" id="dashboard-username">使用者</h2>
+                        <p class="text-sm text-gray-500 mt-1">你的專屬寫作練習區</p>
+                    </div>
                     
-                    <button id="submit-btn" onclick="submitForEvaluation()" class="px-6 py-3 bg-warm-600 hover:bg-warm-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 transform hover:-translate-y-0.5">
-                        <i class="fas fa-paper-plane"></i> 提交 AI 批改
+                    <div class="border-t border-orange-100 pt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-gept-dark"><i class="far fa-calendar-check mr-2"></i>學習日曆</h3>
+                            <span id="calendar-month-year" class="text-sm font-medium bg-orange-100 px-2 py-1 rounded text-orange-800"></span>
+                        </div>
+                        <div class="calendar-grid mb-2">
+                            <div class="day-header">日</div><div class="day-header">一</div><div class="day-header">二</div><div class="day-header">三</div><div class="day-header">四</div><div class="day-header">五</div><div class="day-header">六</div>
+                        </div>
+                        <div id="calendar-body" class="calendar-grid">
+                            <!-- Calendar generated by JS -->
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500 flex items-center justify-center gap-2">
+                            <span class="w-3 h-3 inline-block bg-gept-primary rounded-sm shadow-sm"></span> 表示當日有完成練習
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Question List -->
+                <div class="w-full md:w-2/3 bg-white p-6 rounded-2xl shadow-md border border-orange-100">
+                    <h2 class="text-xl font-bold mb-4 text-gept-dark border-b-2 border-orange-200 pb-2 flex justify-between">
+                        <span><i class="fas fa-list-ul mr-2"></i>模擬試題列表</span>
+                        <span class="text-sm font-normal text-gray-500 mt-1">共 10 題</span>
+                    </h2>
+                    <div id="question-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                        <!-- Questions generated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Test Interface View -->
+        <div id="test-view" class="hidden view-section max-w-4xl mx-auto space-y-4">
+            <button onclick="appState.showView('dashboard')" class="text-gept-dark hover:text-gept-primary mb-2 inline-flex items-center gap-1 font-medium transition-colors">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </button>
+            
+            <!-- Question Area -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-orange-200">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 id="q-title" class="text-xl font-bold text-gray-800"></h2>
+                    <span id="q-type" class="bg-orange-100 text-orange-800 text-xs px-3 py-1 rounded-full font-medium border border-orange-200"></span>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg border border-orange-100 mb-4">
+                    <h3 class="font-bold text-gept-dark mb-2"><i class="fas fa-info-circle mr-1"></i>說明：</h3>
+                    <p id="q-instructions" class="text-gray-700 text-sm leading-relaxed mb-4"></p>
+                    <h3 class="font-bold text-gept-dark mb-2"><i class="fas fa-comment-dots mr-1"></i>提示：</h3>
+                    <p id="q-prompt" class="text-gray-800 whitespace-pre-wrap leading-relaxed"></p>
+                </div>
+                
+                <button onclick="toggleSample()" class="text-sm text-gept-primary hover:text-gept-dark flex items-center gap-1 font-medium">
+                    <i id="sample-icon" class="fas fa-chevron-down"></i> <span id="sample-text">顯示範例文章</span>
+                </button>
+                <div id="q-sample" class="hidden mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed shadow-inner"></div>
+            </div>
+
+            <!-- Answer Area -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-orange-200">
+                <div class="flex justify-between items-end mb-3">
+                    <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-pencil-alt mr-2 text-gept-primary"></i>您的作答</h3>
+                    <span id="word-count" class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">字數: 0</span>
+                </div>
+                <textarea id="user-answer" class="w-full h-48 p-4 rounded-lg border-2 border-orange-200 focus:border-gept-primary focus:ring-0 resize-y bg-gept-light transition-colors text-lg leading-relaxed" placeholder="請在此輸入您的英文作文..."></textarea>
+                
+                <div class="mt-4 flex justify-between items-center">
+                    <div id="last-saved" class="text-sm text-gray-500 italic"></div>
+                    <button id="submit-btn" onclick="submitAnswer()" class="bg-gept-primary text-white px-8 py-3 rounded-xl hover:bg-orange-600 transition-colors shadow-lg font-bold flex items-center gap-2 transform hover:-translate-y-0.5">
+                        <i class="fas fa-paper-plane"></i> 提交給 AI 老師批改
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Loading Overlay for AI -->
+            <div id="ai-loading" class="hidden bg-white/90 absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm">
+                <div class="loader mb-4"></div>
+                <p class="text-gept-dark font-bold text-lg animate-pulse">AI 老師正在認真批改中...</p>
+                <p class="text-sm text-gray-500 mt-2">請稍候，這可能需要幾秒鐘</p>
+            </div>
+        </div>
+
+        <!-- 4. Feedback View -->
+        <div id="feedback-view" class="hidden view-section max-w-4xl mx-auto space-y-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-orange-100">
+                <h2 class="text-2xl font-bold text-gept-dark flex items-center gap-2">
+                    <i class="fas fa-robot text-orange-500 text-3xl"></i> AI 老師評語報告
+                </h2>
+                <div class="flex gap-3">
+                    <button onclick="appState.showView('test')" class="px-4 py-2 border-2 border-gept-primary text-gept-primary rounded-lg hover:bg-orange-50 font-medium transition-colors">
+                        <i class="fas fa-undo mr-1"></i> 修改作文
+                    </button>
+                    <button onclick="appState.showView('dashboard')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+                        回列表
                     </button>
                 </div>
             </div>
 
-            <!-- Sample Essay Area (Hidden by default) -->
-            <div id="sample-area" class="hidden bg-emerald-50 rounded-xl shadow-sm border border-emerald-200 p-6 md:p-8 transition-all">
-                <div class="flex flex-wrap gap-3 justify-between items-center border-b border-emerald-200 pb-3 mb-4">
-                    <h3 class="text-lg font-bold text-emerald-800">
-                        <i class="fas fa-book-open mr-2"></i>範例文章 (Reference Model)
-                    </h3>
-                    <button id="play-tts-btn" onclick="toggleSampleAudio()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 text-sm font-semibold shadow-sm disabled:opacity-50">
-                        <i id="tts-icon" class="fas fa-volume-up"></i> <span id="tts-text">真人語音朗讀</span>
-                    </button>
-                </div>
-                
-                <div class="mb-5">
-                    <span class="text-xs font-bold bg-emerald-200 text-emerald-800 px-2 py-1 rounded mb-2 inline-block">English</span>
-                    <p id="sample-text" class="text-gray-800 leading-relaxed text-lg whitespace-pre-wrap"></p>
-                </div>
-
-                <div class="pt-4 border-t border-emerald-200 mb-2">
-                    <span class="text-xs font-bold bg-emerald-200 text-emerald-800 px-2 py-1 rounded mb-2 inline-block">中文語譯</span>
-                    <p id="sample-translation" class="text-gray-700 leading-relaxed text-base whitespace-pre-wrap"></p>
-                </div>
-                
-                <div class="mt-4 text-sm text-emerald-700 font-semibold text-right">
-                    字數：<span id="sample-word-count"></span>
-                </div>
+            <!-- Overall Feedback -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-gept-primary">
+                <h3 class="font-bold text-lg mb-3 text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-star text-yellow-500"></i> 整體評語
+                </h3>
+                <p id="fb-overall" class="text-gray-700 leading-relaxed bg-orange-50 p-4 rounded-lg"></p>
             </div>
 
-            <!-- Evaluation Feedback Area -->
-            <div id="feedback-area" class="hidden bg-white rounded-xl shadow-sm border border-warm-300 overflow-hidden mb-8">
-                <div class="bg-warm-600 text-white p-4 flex justify-between items-center">
-                    <h3 class="text-lg font-bold"><i class="fas fa-check-double mr-2"></i>批改與評語</h3>
-                    <button onclick="closeFeedback()" class="text-white hover:text-warm-200"><i class="fas fa-times text-xl"></i></button>
-                </div>
-                <div id="feedback-loading" class="p-8 text-center text-warm-600 font-bold hidden flex-col items-center justify-center gap-4">
-                    <i class="fas fa-robot text-4xl animate-bounce"></i>
-                    <p class="text-lg">AI 老師正在用心批改您的文章，請稍候<span class="loading-dots"></span></p>
-                </div>
-                <div id="feedback-content" class="p-6 md:p-8 prose prose-warm max-w-none text-gray-800 leading-relaxed">
-                    <!-- AI Feedback will be injected here -->
+            <!-- Sentence by Sentence -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-orange-100">
+                <h3 class="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2 border-b pb-2">
+                    <i class="fas fa-search text-blue-500"></i> 逐句批改與解析
+                </h3>
+                <div id="fb-sentences" class="space-y-4">
+                    <!-- Sentences generated by JS -->
                 </div>
             </div>
+        </div>
 
-        </section>
     </main>
 
-    <footer class="bg-warm-800 text-warm-200 text-center py-4 text-sm mt-auto">
-        <p>GEPT 中級寫作模擬訓練平台 &copy; 2026. 僅供學習交流使用。</p>
-    </footer>
-
-    <script>
-        // API Configuration
-        const apiKey = "AIzaSyCBgskKK-5L8SERakPnoQDF9soCC4GnIsg"; // The execution environment provides the key at runtime
-
-        // Question Database
-        const questions = [
+    <!-- Scripts -->
+    <script type="module">
+        // --- 1. Question Data (Mock GEPT Intermediate) ---
+        const questionsData = [
             {
-                id: 1,
-                title: "模擬題 I",
-                type: "一般寫作",
-                instruction: "請依下面所提供的文字提示寫一篇英文作文，長度約 120 字（8 至 12 個句子）。作文可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）",
-                prompt: "一般來說，孩子表現良好時，父母常會給孩子獎勵。請寫一篇文章說明<br><br>(1) 你表現好的時候，你的父母通常會用哪些方法獎勵你？你覺得這些方法有效、適當嗎？<br>(2) 如果有一天你為人父母，你會用相同的獎勵方式嗎？",
-                sample: "Generally speaking, parents often reward their children for good behavior. When I perform well, my parents usually reward me by taking me out to a fancy restaurant for dinner or buying me books that I have wanted for a long time. I think these methods are both effective and appropriate because they make me feel appreciated and encourage me to keep up the good work without spoiling me with too much money.\n\nIf I become a parent one day, I will likely use similar rewarding methods. However, I would also add more non-material rewards, such as spending extra quality time together or praising them verbally. I believe that emotional support is just as important as physical gifts in building a child's confidence.",
-                translation: "一般來說，父母常會因為孩子表現良好而給予獎勵。當我表現好時，我的父母通常會帶我去高級餐廳吃晚餐，或是買我渴望已久的書來獎勵我。我認為這些方法既有效又適當，因為這讓我感到受重視，並鼓勵我繼續保持好表現，同時又不會因為給太多錢而寵壞我。\n\n如果有一天我為人父母，我很可能會使用類似的獎勵方式。不過，我也會加入更多非物質的獎勵，例如花更多優質的時間陪伴他們，或是在言語上讚美他們。我相信在建立孩子的自信心方面，情感上的支持與物質上的禮物一樣重要。"
+                id: "q1",
+                type: "Guided Writing (引導寫作)",
+                title: "例題 I - 父母的獎勵",
+                instructions: "請依下面所提供的文字提示寫一篇英文作文，長度約 120 字（8 至 12 個句子）。作文可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）",
+                prompt: "一般來說，孩子表現良好時，父母常會給孩子獎勵。請寫一篇文章說明：\n(1) 你表現好的時候，你的父母通常會用哪些方法獎勵你？你覺得這些方法有效、適當嗎？\n(2) 如果有一天你為人父母，你會用相同的獎勵方式嗎？",
+                sample: "When I perform well, my parents usually reward me with encouraging words and sometimes a special meal at my favorite restaurant. I find these methods both effective and appropriate because they make me feel valued without spoiling me with expensive gifts. The verbal praise boosts my confidence, while the special meal serves as a memorable celebration.\n\nIf I become a parent someday, I will likely use similar rewarding methods. I believe that emotional support and shared experiences are more precious than material items. However, I might also incorporate a system where my children can earn extra free time for their hobbies, encouraging them to pursue their interests."
             },
             {
-                id: 2,
-                title: "模擬題 II",
-                type: "書信寫作",
-                instruction: "請依以下提示寫一封英文 email，長度約 120 字（8 至 12 個句子）。此信可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）<br><br><span class='text-sm text-gray-500'>Email 的上下款不須寫在答案紙上。</span>",
-                prompt: "你住在美國的筆友 Ted 最近剛轉學，正在煩惱新學校的交友問題。請寫一封英文 email 給他，信的內容必須包括以下兩點：<br><br>(1) 分享你適應新環境的經驗。<br>(2) 建議他幾個交新朋友的方法。",
-                sample: "Dear Ted,\n\nI was sorry to hear that you are struggling to make new friends at your new school. Don't worry too much; it is completely normal to feel anxious in an unfamiliar place. When I first entered high school, I also felt lonely because I didn't know anyone. However, things got better after a few weeks once I started stepping out of my comfort zone.\n\nTo make new friends, I suggest you join some school clubs that match your interests. It is the easiest way to meet people who share the same hobbies. Furthermore, try to smile more and simply say hi to your classmates. A friendly attitude can make a huge difference. I am sure you will make great friends soon!\n\nBest wishes,\n[Your Name]",
-                translation: "親愛的 Ted：\n\n聽到你在新學校交友遇到困難，我感到很遺憾。不要太擔心；在陌生的地方感到焦慮是完全正常的。當我剛進高中時，我也因為不認識任何人而感到孤單。然而，幾週後當我開始走出舒適圈，情況就改善了。\n\n為了結交新朋友，我建議你參加一些符合你興趣的學校社團。這是認識有相同嗜好的人最簡單的方法。此外，試著多微笑並簡單地向同學打招呼。友善的態度會帶來很大的改變。我相信你很快就會交到好朋友的！\n\n祝好，\n[你的名字]"
+                id: "q2",
+                type: "Email (信函寫作)",
+                title: "例題 II - 給轉學筆友的建議",
+                instructions: "請依以下提示寫一封英文 email，長度約 120 字（8 至 12 個句子）。此信可以是一個完整的段落，也可以分段。（Email 的上下款不須寫在答案紙上。）",
+                prompt: "你住在美國的筆友 Ted 最近剛轉學，正在煩惱新學校的交友問題。請寫一封英文 email 給他，信的內容必須包括以下兩點：\n(1) 分享你適應新環境的經驗。\n(2) 建議他幾個交新朋友的方法。",
+                sample: "I was sorry to hear that you are struggling to make friends at your new school. I know exactly how you feel, as I experienced the same anxiety when I transferred to my current high school two years ago. Initially, I felt lonely, but I gradually adapted by giving myself time and keeping an open mind.\n\nTo make new friends, I suggest you join some school clubs that match your interests, like the basketball team or the photography club. This is a great way to meet people who share similar hobbies. Additionally, don't be afraid to strike up a conversation with your classmates during breaks. A simple smile and a friendly \"hello\" can go a long way. Hang in there, and things will get better soon!"
             },
             {
-                id: 3,
-                title: "模擬題 III",
-                type: "一般寫作",
-                instruction: "請依下面所提供的文字提示寫一篇英文作文，長度約 120 字（8 至 12 個句子）。作文可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）",
-                prompt: "現代人經常熬夜，這似乎已成為一種普遍的現象。請寫一篇文章說明：<br><br>(1) 你或你身邊的人通常為了什麼原因熬夜？<br>(2) 熬夜對生活或健康帶來了哪些負面影響？請提出一個改善這個壞習慣的建議。",
-                sample: "Nowadays, staying up late has become a common habit. Many people I know, including myself, usually stay up late to finish school assignments or play video games. Sometimes, we just lose track of time while scrolling through social media.\n\nHowever, this bad habit brings several negative effects. The most obvious one is feeling exhausted the next day, which makes it hard to concentrate in class. Furthermore, a lack of sleep can weaken our immune system and make us sick easily. To improve this situation, I suggest setting a strict bedtime routine. For example, turning off all electronic devices an hour before bed can help us fall asleep faster and get enough rest.",
-                translation: "現今，熬夜已經成為一種普遍的習慣。我認識的很多人（包括我自己）通常會為了完成學校作業或玩電動而熬夜。有時候，我們只是在滑社群媒體時忘了時間。\n\n然而，這個壞習慣帶來了一些負面影響。最明顯的就是隔天會感到疲憊，這使得上課很難專心。此外，睡眠不足會削弱我們的免疫系統，使我們容易生病。為了改善這種情況，我建議設定嚴格的就寢時間。例如，在睡前一小時關閉所有電子設備，可以幫助我們更快入睡並獲得足夠的休息。"
+                id: "q3",
+                type: "Guided Writing (引導寫作)",
+                title: "智慧型手機的影響",
+                instructions: "字數約 120 字。可以分段。",
+                prompt: "智慧型手機為現代人帶來便利，但也衍生出一些問題。請寫一篇文章：\n(1) 說明智慧型手機為你的生活帶來的優點與缺點。\n(2) 你認為應該如何健康地使用智慧型手機？",
+                sample: "Smartphones have brought both significant benefits and drawbacks to my life. On the positive side, they provide immense convenience. I can easily keep in touch with friends, search for information instantly, and use various apps to manage my schedule. However, the downside is that I sometimes become too distracted by social media, which affects my concentration on studies and leads to eye strain.\n\nTo use smartphones healthily, I believe we should set clear boundaries. For instance, we can turn off unnecessary notifications while studying and avoid using screens an hour before bedtime. By practicing self-discipline, we can enjoy the convenience of technology without letting it control our lives."
             },
             {
-                id: 4,
-                title: "模擬題 IV",
-                type: "一般寫作",
-                instruction: "請依下面所提供的文字提示寫一篇英文作文，長度約 120 字（8 至 12 個句子）。作文可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）",
-                prompt: "智慧型手機已經是生活中不可或缺的物品。請寫一篇文章分享：<br><br>(1) 你一天通常花多少時間在手機上？主要都在做什麼？<br>(2) 如果規定你一整天都不能使用手機，你覺得你的生活會有什麼改變？",
-                sample: "Smartphones have become an essential part of our daily lives. On average, I spend about three hours a day on my phone. I mostly use it to chat with friends, watch funny videos, and search for information for my homework. It is definitely a very convenient tool.\n\nIf I were forbidden to use my smartphone for a whole day, I think my life would change significantly. At first, I might feel a bit anxious and bored because I couldn't check my messages instantly. However, I would also have more free time to do other meaningful things, such as reading a novel, taking a walk, or having a real face-to-face conversation with my family.",
-                translation: "智慧型手機已經成為我們日常生活中不可或缺的一部分。平均而言，我每天花大約三個小時在手機上。我主要用它來和朋友聊天、看搞笑影片，以及為我的作業尋找資料。它絕對是一個非常方便的工具。\n\n如果我被禁止整天使用智慧型手機，我想我的生活會發生很大的改變。起初，我可能會感到有點焦慮和無聊，因為我無法立即查看訊息。然而，我也會有更多空閒時間去做其他有意義的事情，例如讀一本小說、散步，或與家人進行真正的面對面交談。"
+                id: "q4",
+                type: "Email (信函寫作)",
+                title: "取消約會與道歉",
+                instructions: "字數約 120 字。上下款不計。",
+                prompt: "你原本和外國朋友 Sarah 約好這週末一起去參觀博物館，但你因為生病無法前往。請寫一封 email：\n(1) 解釋你無法赴約的原因並表達歉意。\n(2) 提議下週或未來的另一個時間重新安排行程。",
+                sample: "I am writing to sincerely apologize for having to cancel our plans to visit the museum this weekend. Unfortunately, I have caught a severe cold and my doctor has advised me to stay home and rest. I was really looking forward to our trip and I feel terrible for letting you down at the last minute.\n\nWould it be possible to reschedule our visit for next Saturday? I should be fully recovered by then. If next weekend doesn't work for you, please let me know when you are available. Once again, I am so sorry for the inconvenience, and I hope we can meet up soon."
             },
             {
-                id: 5,
-                title: "模擬題 V",
-                type: "書信寫作",
-                instruction: "請依以下提示寫一封英文 email，長度約 120 字（8 至 12 個句子）。此信可以是一個完整的段落，也可以分段。（評分重點包括內容、組織、文法、用字遣詞、標點符號、大小寫。）<br><br><span class='text-sm text-gray-500'>Email 的上下款不須寫在答案紙上。</span>",
-                prompt: "你的外國朋友 Sarah 計畫下個月來台灣旅遊。請寫一封英文 email 給她，包含：<br><br>(1) 推薦一個你最喜歡的台灣城市或景點，並說明原因。<br>(2) 提醒她來台灣旅遊時需要注意的一件事（例如天氣、交通或飲食習慣）。",
-                sample: "Dear Sarah,\n\nI am so excited to hear that you are visiting Taiwan next month! I highly recommend that you visit Tainan. It is a beautiful city in southern Taiwan, famous for its historical buildings and delicious local food. You can try beef soup and bubble tea there, which are absolutely amazing. I am sure you will love the traditional atmosphere.\n\nHowever, there is one thing you should pay attention to. The weather in Taiwan can be quite hot and humid, especially in the south. Please remember to bring light clothes, a hat, and an umbrella to protect yourself from the strong sunshine or sudden afternoon rain. I can't wait to see you!\n\nBest wishes,\n[Your Name]",
-                translation: "親愛的 Sarah：\n\n聽到你下個月要來台灣旅遊，我真的太興奮了！我強烈推薦你去台南。那是台灣南部一座美麗的城市，以其歷史建築和美味的當地食物而聞名。你可以在那裡品嚐牛肉湯和珍珠奶茶，絕對非常棒。我相信你會喜歡那裡傳統的氛圍。\n\n然而，有一件事你應該注意。台灣的天氣可能會非常炎熱潮濕，尤其是在南部。請記得帶輕便的衣服、帽子和雨傘，以保護自己免受強烈陽光或午後陣雨的影響。我等不及要見到你了！\n\n祝好，\n[你的名字]"
+                id: "q5",
+                type: "Guided Writing (引導寫作)",
+                title: "網路購物 vs 實體店面",
+                instructions: "字數約 120 字。",
+                prompt: "現代人購物的管道多元。請寫一篇文章比較：\n(1) 你比較喜歡網路購物還是去實體店面購物？為什麼？\n(2) 描述一次讓你印象深刻的購物經驗（好或壞皆可）。",
+                sample: "I generally prefer online shopping to visiting physical stores. The primary reason is the incredible convenience it offers; I can browse products, compare prices, and read reviews at any time without leaving my room. Furthermore, online platforms often provide a wider variety of items than local shops.\n\nA memorable experience I had was when I ordered a winter coat online last year. The delivery was remarkably fast, and the coat fit perfectly. However, the best part was that the seller included a handwritten thank-you note and a small pair of gloves as a gift. This unexpected personal touch made the online shopping experience surprisingly warm and delightful."
+            },
+            {
+                id: "q6",
+                type: "Email (信函寫作)",
+                title: "邀請外國朋友來台灣",
+                instructions: "字數約 120 字。",
+                prompt: "你的外國朋友 John 計畫來亞洲旅遊。請寫一封信邀請他來台灣：\n(1) 推薦一個台灣的特色景點並說明原因。\n(2) 介紹一項他一定要品嚐的台灣美食。",
+                sample: "I heard you are planning a trip to Asia, and I would love to invite you to visit Taiwan! It is a beautiful island with friendly people and amazing sights.\n\nIf you come, I highly recommend visiting Taroko Gorge in Hualien. The marble canyons are absolutely breathtaking, and walking along the trails offers an unforgettable natural experience. Besides the scenery, you must try our famous beef noodle soup. The rich, savory broth combined with tender beef and chewy noodles is a true masterpiece of Taiwanese cuisine. I would be thrilled to be your tour guide. Let me know if you decide to come!"
+            },
+            {
+                id: "q7",
+                type: "Guided Writing (引導寫作)",
+                title: "日常生活中的環保",
+                instructions: "字數約 120 字。",
+                prompt: "環境保護是全球關注的議題。請寫一篇文章說明：\n(1) 在日常生活中，你做了哪些具體的環保行動？\n(2) 你認為每個人微小的環保舉動能帶來什麼改變？",
+                sample: "Environmental protection is a crucial issue, and I try to do my part in daily life. Specifically, I always carry a reusable water bottle and canvas shopping bags to reduce plastic waste. Additionally, I make it a habit to turn off lights and unplug appliances when they are not in use to conserve energy.\n\nI firmly believe that even minor eco-friendly actions can lead to significant changes. When millions of people adopt these small habits, the cumulative effect can massively reduce global carbon emissions and pollution. Ultimately, protecting the earth starts with individual responsibility, and every little effort counts towards a sustainable future."
+            },
+            {
+                id: "q8",
+                type: "Email (信函寫作)",
+                title: "向飯店尋找遺失物",
+                instructions: "字數約 120 字。",
+                prompt: "你上週在國外旅遊時入住一間飯店，退房回國後發現把一件重要的外套忘在房間了。請寫信給飯店：\n(1) 描述該外套的特徵以及你住的房號與日期。\n(2) 詢問他們是否尋獲，並說明你願意支付寄回的運費。",
+                sample: "I am writing to inquire about an item I believe I left behind during my recent stay at your hotel. I checked out on May 15th from room 302.\n\nI am missing a dark blue, waterproof jacket with a silver zipper. It is very important to me as it was a birthday gift. Could you please check with your housekeeping department to see if it was found in the room or the closet? If it has been located, I would be extremely grateful if you could arrange to have it shipped to my home address in Taiwan. I will, of course, cover all the shipping expenses. Thank you for your assistance."
+            },
+            {
+                id: "q9",
+                type: "Guided Writing (引導寫作)",
+                title: "學習第二外語的重要性",
+                instructions: "字數約 120 字。",
+                prompt: "除了英文，越來越多人學習第二外語（如日文、韓文、法文等）。請說明：\n(1) 你有學習第二外語的經驗或計畫嗎？為什麼選擇該語言？\n(2) 學習多種語言對未來的職涯或生活有什麼幫助？",
+                sample: "Besides English, I have been planning to learn Japanese as my second foreign language. I chose Japanese because I am deeply fascinated by Japanese culture, especially their animation and traditional arts. Furthermore, traveling to Japan is one of my biggest dreams, and knowing the language would make the trip much more enjoyable.\n\nI believe that mastering multiple languages is highly beneficial for both career and life. In the workplace, being multilingual makes you a more competitive candidate in the global market, opening doors to international companies. In life, it allows you to connect with people from diverse backgrounds and understand different cultures from a broader perspective."
+            },
+            {
+                id: "q10",
+                type: "Email (信函寫作)",
+                title: "感謝寄宿家庭",
+                instructions: "字數約 120 字。",
+                prompt: "你在英國遊學一個月，期間住在一個寄宿家庭(Mr. and Mrs. Smith)。現在你已回到台灣，請寫信給他們：\n(1) 感謝他們這段期間的照顧，並提及一件令你印象深刻的事。\n(2) 分享你目前的近況，並邀請他們未來有機會來台灣玩。",
+                sample: "I am writing to let you know that I have arrived in Taiwan safely. I want to express my deepest gratitude for your warm hospitality during my one-month stay in the UK. You made me feel like part of the family. I will never forget the weekend we spent baking apple pie together; it was the most delicious pie I have ever tasted!\n\nI have now returned to my normal school routine and am busy catching up on my studies. If you ever plan to travel to Asia, please consider visiting Taiwan. I would be more than happy to show you around and treat you to some traditional Taiwanese food. Keep in touch!"
             }
         ];
 
-        let currentIndex = 0;
-        let isSampleVisible = false;
-        let currentAudio = null;
-        let isAudioPlaying = false;
+        // --- 2. Firebase & API Setup ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // DOM Elements
-        const questionListEl = document.getElementById('question-list');
-        const titleEl = document.getElementById('question-title');
-        const badgeEl = document.getElementById('question-type-badge');
-        const instructionEl = document.getElementById('question-instruction');
-        const promptEl = document.getElementById('question-prompt');
-        const essayInputEl = document.getElementById('user-essay');
-        const wordCountEl = document.getElementById('word-count');
-        const sampleAreaEl = document.getElementById('sample-area');
-        const sampleTextEl = document.getElementById('sample-text');
-        const sampleTranslationEl = document.getElementById('sample-translation');
-        const sampleWordCountEl = document.getElementById('sample-word-count');
-        const toggleBtnEl = document.getElementById('toggle-sample-btn');
-        const playTtsBtnEl = document.getElementById('play-tts-btn');
-        const ttsIconEl = document.getElementById('tts-icon');
-        const ttsTextEl = document.getElementById('tts-text');
-        const feedbackAreaEl = document.getElementById('feedback-area');
-        const feedbackLoadingEl = document.getElementById('feedback-loading');
-        const feedbackContentEl = document.getElementById('feedback-content');
-        const submitBtnEl = document.getElementById('submit-btn');
+        const firebaseConfig = {
+            apiKey: "AIzaSyCan2_Rc26HsLkOPr0i5QrgdjAYyqcigJ0",
+            authDomain: "english-reading-6b506.firebaseapp.com",
+            projectId: "english-reading-6b506",
+            storageBucket: "english-reading-6b506.firebasestorage.app",
+            messagingSenderId: "494747176273",
+            appId: "1:494747176273:web:585487fadb29b2e5e2d770",
+            measurementId: "G-4JD6R9MRPQ"
+        };
 
-        // Initialize App
-        function init() {
-            renderQuestionList();
-            loadQuestion(0);
+        const MY_APP_ID = 'gept-writing-mock-v1'; 
+        const apiKey = ""; // Gemini API Key is provided by environment
 
-            // Word count listener
-            essayInputEl.addEventListener('input', updateWordCount);
+        let app, db, auth;
+        let currentUserUid = null;
+        let currentUserName = null;
+        let userProfileData = { history: {}, completedDates: [] };
+        let unsubscribeUser = null;
+
+        // State Management
+        window.appState = {
+            currentView: 'login',
+            selectedQuestionId: null,
+            
+            showView: function(viewId) {
+                if(viewId === 'dashboard' && !currentUserName) {
+                    alert("請先登入"); return;
+                }
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                document.getElementById(`${viewId}-view`).classList.remove('hidden');
+                this.currentView = viewId;
+                
+                if (viewId === 'dashboard') renderDashboard();
+                if (viewId === 'test') renderTestArea();
+            }
+        };
+
+        // --- Init & UI Functions ---
+        function updateConnectionStatus(status, text) {
+            const light = document.getElementById('status-light');
+            const txt = document.getElementById('status-text');
+            txt.textContent = text;
+            light.className = 'w-3 h-3 rounded-full ' + 
+                (status === 'loading' ? 'bg-yellow-400 animate-pulse' : 
+                 status === 'success' ? 'bg-green-500' : 'bg-red-500');
         }
 
-        // Render Sidebar
-        function renderQuestionList() {
-            questionListEl.innerHTML = '';
-            questions.forEach((q, index) => {
-                const btn = document.createElement('button');
-                btn.className = `w-full text-left px-4 py-3 rounded-lg border font-medium transition-colors ${
-                    index === currentIndex 
-                    ? 'bg-warm-100 border-warm-400 text-warm-800 shadow-sm' 
-                    : 'bg-white border-transparent text-gray-600 hover:bg-warm-50 hover:border-warm-200'
-                }`;
-                btn.innerHTML = `<span class="inline-block w-6 text-warm-500">${index + 1}.</span> ${q.title} <span class="text-xs text-gray-400 block ml-6">${q.type}</span>`;
-                btn.onclick = () => loadQuestion(index);
-                questionListEl.appendChild(btn);
+        async function initFirebase() {
+            try {
+                updateConnectionStatus('loading', '連線至資料庫...');
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Start Auth
+                await signInAnonymously(auth);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserUid = user.uid;
+                        updateConnectionStatus('success', '系統就緒');
+                        listenToGlobalUsers();
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                updateConnectionStatus('error', '連線失敗');
+            }
+        }
+
+        // --- Data Logic (Following Strict Paths) ---
+        // Global path: artifacts/appId/public/data/global
+        function listenToGlobalUsers() {
+            if(!currentUserUid) return;
+            const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globalList');
+            
+            onSnapshot(globalRef, (docSnap) => {
+                const data = docSnap.exists() ? docSnap.data() : { users: [] };
+                renderQuickLogin(data.users || []);
+            }, (error) => {
+                console.error("Listen global error:", error);
             });
         }
 
-        // Load Question Content
-        function loadQuestion(index) {
-            currentIndex = index;
-            const q = questions[index];
+        window.handleLogin = async (nameOverride) => {
+            const nameInput = document.getElementById('login-name').value;
+            const finalName = (nameOverride || nameInput).trim();
+            if (!finalName) return;
+
+            currentUserName = finalName;
             
-            titleEl.textContent = q.title;
-            badgeEl.textContent = q.type;
-            instructionEl.innerHTML = q.instruction;
-            promptEl.innerHTML = q.prompt;
-            sampleTextEl.textContent = q.sample;
-            sampleTranslationEl.textContent = q.translation;
-            sampleWordCountEl.textContent = countWords(q.sample);
+            // Update UI
+            document.getElementById('header-user').classList.remove('hidden');
+            document.getElementById('header-user').classList.add('flex');
+            document.getElementById('header-username').textContent = finalName;
+            document.getElementById('dashboard-username').textContent = finalName;
+
+            try {
+                // Add to global list for quick login
+                const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globalList');
+                const globalSnap = await getDoc(globalRef);
+                let users = globalSnap.exists() ? globalSnap.data().users || [] : [];
+                if (!users.includes(finalName)) {
+                    users.push(finalName);
+                    await setDoc(globalRef, { users: users });
+                }
+
+                // Load User Data (Store user profile in public path so it's accessible by name across sessions)
+                subscribeToUserData(finalName);
+                appState.showView('dashboard');
+                
+            } catch (e) {
+                console.error("Login Error:", e);
+                alert("登入記錄失敗，但仍可繼續使用。");
+                appState.showView('dashboard');
+            }
+        };
+
+        function subscribeToUserData(userName) {
+            if (unsubscribeUser) unsubscribeUser();
+            // Using public path to allow name-based retrieval regardless of anonymous UID
+            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', `user_${userName}`);
             
-            // Reset UI states
-            essayInputEl.value = '';
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    userProfileData = docSnap.data();
+                    if(!userProfileData.completedDates) userProfileData.completedDates = [];
+                    if(!userProfileData.history) userProfileData.history = {};
+                } else {
+                    userProfileData = { history: {}, completedDates: [] };
+                    // init empty doc
+                    setDoc(userRef, userProfileData);
+                }
+                
+                // If currently on dashboard, re-render calendar
+                if(appState.currentView === 'dashboard') renderCalendar();
+                
+            }, (err) => console.error("User data listen error", err));
+        }
+
+        window.logout = () => {
+            currentUserName = null;
+            userProfileData = { history: {}, completedDates: [] };
+            if(unsubscribeUser) unsubscribeUser();
+            document.getElementById('header-user').classList.add('hidden');
+            document.getElementById('header-user').classList.remove('flex');
+            document.getElementById('login-name').value = '';
+            appState.showView('login');
+        };
+
+        // --- UI Rendering ---
+        function renderQuickLogin(users) {
+            const container = document.getElementById('quick-login-list');
+            if (users.length === 0) {
+                container.innerHTML = '<span class="text-sm text-gray-400">尚無紀錄</span>';
+                return;
+            }
+            container.innerHTML = users.map(u => `
+                <button onclick="handleLogin('${u}')" class="bg-orange-100 text-gept-dark px-3 py-1.5 rounded-full text-sm font-medium hover:bg-orange-200 transition border border-orange-200 shadow-sm flex items-center gap-1">
+                    <i class="fas fa-user text-xs"></i> ${u}
+                </button>
+            `).join('');
+        }
+
+        function renderDashboard() {
+            renderCalendar();
+            
+            const qList = document.getElementById('question-list');
+            qList.innerHTML = questionsData.map((q, index) => {
+                const hasCompleted = userProfileData.history[q.id] && userProfileData.history[q.id].feedback;
+                const statusIcon = hasCompleted 
+                    ? `<i class="fas fa-check-circle text-green-500" title="已完成"></i>` 
+                    : `<i class="far fa-circle text-gray-300" title="未完成"></i>`;
+                
+                return `
+                <div class="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-100 hover:shadow-md transition-shadow cursor-pointer" onclick="selectQuestion('${q.id}')">
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1">${statusIcon}</div>
+                        <div>
+                            <div class="font-bold text-gept-text text-lg">${index + 1}. ${q.title}</div>
+                            <div class="text-xs text-orange-600 bg-orange-200 inline-block px-2 py-0.5 rounded mt-1">${q.type}</div>
+                        </div>
+                    </div>
+                    <button class="bg-white border border-gept-primary text-gept-primary hover:bg-gept-primary hover:text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-sm">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderCalendar() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            document.getElementById('calendar-month-year').textContent = `${year}年 ${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const calendarBody = document.getElementById('calendar-body');
+            let html = '';
+            
+            // Empty slots
+            for (let i = 0; i < firstDay; i++) {
+                html += `<div class="calendar-day day-empty"></div>`;
+            }
+            
+            // Days
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const isCompleted = userProfileData.completedDates && userProfileData.completedDates.includes(dateString);
+                const className = isCompleted ? 'calendar-day day-completed' : 'calendar-day day-normal';
+                
+                html += `<div class="${className}">${i}</div>`;
+            }
+            
+            calendarBody.innerHTML = html;
+        }
+
+        window.selectQuestion = (qId) => {
+            appState.selectedQuestionId = qId;
+            appState.showView('test');
+        };
+
+        function renderTestArea() {
+            const q = questionsData.find(x => x.id === appState.selectedQuestionId);
+            if(!q) return;
+
+            document.getElementById('q-title').textContent = q.title;
+            document.getElementById('q-type').textContent = q.type;
+            document.getElementById('q-instructions').textContent = q.instructions;
+            document.getElementById('q-prompt').textContent = q.prompt;
+            document.getElementById('q-sample').textContent = q.sample;
+            
+            // Reset state
+            document.getElementById('q-sample').classList.add('hidden');
+            document.getElementById('sample-text').textContent = '顯示範例文章';
+            document.getElementById('sample-icon').className = 'fas fa-chevron-down';
+            
+            const textarea = document.getElementById('user-answer');
+            const savedData = userProfileData.history[q.id];
+            
+            if (savedData && savedData.draft) {
+                textarea.value = savedData.draft;
+                document.getElementById('last-saved').textContent = `上次作答時間: ${savedData.lastUpdate}`;
+            } else {
+                textarea.value = '';
+                document.getElementById('last-saved').textContent = '';
+            }
+            
             updateWordCount();
-            stopAudio();
-            closeSample();
-            closeFeedback();
-            renderQuestionList(); // Update active state in sidebar
         }
 
-        // Word Count Logic
-        function countWords(text) {
-            const trimmed = text.trim();
-            if (trimmed === '') return 0;
-            // Basic English word split
-            return trimmed.split(/\s+/).length;
-        }
+        window.toggleSample = () => {
+            const sampleDiv = document.getElementById('q-sample');
+            const isHidden = sampleDiv.classList.contains('hidden');
+            if (isHidden) {
+                sampleDiv.classList.remove('hidden');
+                document.getElementById('sample-text').textContent = '隱藏範例文章';
+                document.getElementById('sample-icon').className = 'fas fa-chevron-up';
+            } else {
+                sampleDiv.classList.add('hidden');
+                document.getElementById('sample-text').textContent = '顯示範例文章';
+                document.getElementById('sample-icon').className = 'fas fa-chevron-down';
+            }
+        };
 
+        // Word count logic
+        document.getElementById('user-answer').addEventListener('input', updateWordCount);
         function updateWordCount() {
-            const count = countWords(essayInputEl.value);
-            wordCountEl.textContent = count;
-            if (count < 80) {
-                wordCountEl.className = 'text-red-500 font-bold';
-            } else if (count > 150) {
-                wordCountEl.className = 'text-orange-500 font-bold';
-            } else {
-                wordCountEl.className = 'text-green-600 font-bold';
+            const text = document.getElementById('user-answer').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            document.getElementById('word-count').textContent = `字數: ${words}`;
+        }
+
+        // --- Submit & API Logic ---
+        window.submitAnswer = async () => {
+            const answer = document.getElementById('user-answer').value.trim();
+            if (answer.split(/\s+/).length < 20) {
+                alert("作答內容太少，請至少輸入 20 個字以上再提交批改！");
+                return;
             }
-        }
 
-        // Toggle Sample Essay
-        function toggleSample() {
-            isSampleVisible = !isSampleVisible;
-            if (isSampleVisible) {
-                sampleAreaEl.classList.remove('hidden');
-                toggleBtnEl.innerHTML = '<i class="fas fa-eye-slash"></i> <span>隱藏範例文章</span>';
-                toggleBtnEl.classList.replace('bg-warm-100', 'bg-warm-200');
-            } else {
-                closeSample();
+            const q = questionsData.find(x => x.id === appState.selectedQuestionId);
+            
+            // Show Loading
+            document.getElementById('ai-loading').classList.remove('hidden');
+            
+            try {
+                // Save draft first
+                await saveProgress(answer, null);
+                
+                // Call Gemini
+                const feedbackData = await callGeminiAPI(q.prompt, answer);
+                
+                // Process Feedback
+                renderFeedback(feedbackData);
+                
+                // Save completion to Firebase
+                await saveProgress(answer, feedbackData);
+                
+                appState.showView('feedback');
+
+            } catch (e) {
+                console.error("Submit Error:", e);
+                alert("批改過程中發生錯誤，請稍後再試。\n" + e.message);
+            } finally {
+                document.getElementById('ai-loading').classList.add('hidden');
             }
+        };
+
+        async function saveProgress(draft, feedback) {
+            if(!currentUserName) return;
+            
+            const qId = appState.selectedQuestionId;
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const timeStr = now.toLocaleString('zh-TW');
+
+            let newHistory = { ...userProfileData.history };
+            newHistory[qId] = {
+                draft: draft,
+                lastUpdate: timeStr,
+                feedback: feedback || (newHistory[qId] ? newHistory[qId].feedback : null)
+            };
+
+            let newDates = [...(userProfileData.completedDates || [])];
+            if (feedback && !newDates.includes(dateStr)) {
+                newDates.push(dateStr);
+            }
+
+            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', `user_${currentUserName}`);
+            await setDoc(userRef, {
+                history: newHistory,
+                completedDates: newDates
+            }, { merge: true });
         }
 
-        function closeSample() {
-            isSampleVisible = false;
-            sampleAreaEl.classList.add('hidden');
-            toggleBtnEl.innerHTML = '<i class="fas fa-eye"></i> <span>顯示範例文章</span>';
-            toggleBtnEl.classList.replace('bg-warm-200', 'bg-warm-100');
-            stopAudio();
-        }
+        async function callGeminiAPI(questionPrompt, userAnswer) {
+            const systemPrompt = `你是一位嚴格且專業的台灣 GEPT 中級英文寫作批改老師。
+任務：根據使用者的作答與題目，進行專業批改。
+重點：指出文法錯誤、用字遣詞是否道地、結構是否完整。
+語言：所有評語必須使用「繁體中文」。
 
-        function closeFeedback() {
-            feedbackAreaEl.classList.add('hidden');
-        }
+輸出格式「必須」為合法的 JSON 格式，絕對不要包含 Markdown 語法（例如 \`\`\`json ），直接輸出 JSON 物件本身：
+{
+  "overall": "針對整體內容、結構、文法給予一段約 50 字的總結評語。",
+  "corrections": [
+    {
+      "original": "使用者原始句子（包含錯誤）",
+      "error": "繁體中文說明錯誤點",
+      "suggestion": "修改後的正確句子"
+    }
+  ]
+}`;
 
-        // AI API Call with Exponential Backoff
-        async function fetchWithRetry(url, options, maxRetries = 5) {
-            const delays = [1000, 2000, 4000, 8000, 16000];
-            for (let i = 0; i < maxRetries; i++) {
+            const userMessage = `題目提示：\n${questionPrompt}\n\n學生作答：\n${userAnswer}`;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userMessage }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.2
+                }
+            };
+
+            // Exponential backoff retry
+            let retries = 5;
+            let delay = 1000;
+            
+            while (retries > 0) {
                 try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        // 嘗試解析 Google API 回傳的具體錯誤訊息
-                        const errorData = await response.json().catch(() => ({}));
-                        const errorMessage = errorData?.error?.message || `HTTP 狀態碼: ${response.status}`;
-                        throw new Error(errorMessage);
-                    }
-                    return await response.json();
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) throw new Error(`API HTTP Error: ${response.status}`);
+                    
+                    const result = await response.json();
+                    let textResult = result.candidates[0].content.parts[0].text;
+                    
+                    // Clean potential markdown wrap
+                    textResult = textResult.replace(/^```json\n/, '').replace(/\n```$/, '');
+                    
+                    return JSON.parse(textResult);
+
                 } catch (e) {
-                    if (i === maxRetries - 1) throw e;
-                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                    retries--;
+                    if (retries === 0) throw e;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
                 }
             }
         }
 
-        // Submit for Evaluation
-        async function submitForEvaluation() {
-            const text = essayInputEl.value.trim();
-            if (text.length < 20) {
-                alert('請至少輸入一段完整的英文句子後再提交批改。');
+        function renderFeedback(data) {
+            document.getElementById('fb-overall').textContent = data.overall || "AI 老師覺得寫得不錯！";
+            
+            const sentencesContainer = document.getElementById('fb-sentences');
+            
+            if (!data.corrections || data.corrections.length === 0) {
+                sentencesContainer.innerHTML = `<div class="p-4 bg-green-50 text-green-700 rounded-lg border border-green-200"><i class="fas fa-check-circle mr-2"></i> 太棒了！這篇文章沒有明顯的文法錯誤。</div>`;
                 return;
             }
 
-            // UI Update
-            submitBtnEl.disabled = true;
-            submitBtnEl.classList.add('opacity-70', 'cursor-not-allowed');
-            feedbackAreaEl.classList.remove('hidden');
-            feedbackLoadingEl.classList.remove('hidden');
-            feedbackLoadingEl.classList.add('flex');
-            feedbackContentEl.classList.add('hidden');
-            feedbackContentEl.innerHTML = '';
-
-            // Scroll to feedback
-            feedbackAreaEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            const q = questions[currentIndex];
-            const systemPrompt = `你是一個專業的台灣 GEPT 全民英檢中級寫作批改老師。
-請根據以下題目與使用者寫作的內容進行評分與批改。
-評分重點包括：內容(是否切題)、組織(連貫性)、文法、用字遣詞、標點符號與大小寫。
-
-請務必使用 HTML 格式回覆 (只使用基本的 <div>, <p>, <strong>, <ul>, <li>, <br>, <span> 等標籤進行排版，不要有 markdown 符號或 \`\`\`html 標籤)。
-建議的結構如下：
-1. <h4 style="color:#d97706; font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem;">預估級分</h4>：給出 0-5 級分，並簡述原因。
-2. <h4 style="color:#d97706; font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem; margin-top:1rem;">優點</h4>：列出文章寫得好的地方。
-3. <h4 style="color:#d97706; font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem; margin-top:1rem;">需改進與文法錯誤</h4>：具體指出文法錯誤或句子不順的地方。
-4. <h4 style="color:#d97706; font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem; margin-top:1rem;">修改建議版本</h4>：提供一段修改過後，語句順暢且符合中級程度的版本。
-
-請全程使用繁體中文回覆。`;
-
-            const userQuery = `題目類型：${q.type}
-題目提示：${q.prompt.replace(/<br>/g, '')}
-學生作答內容：
-${text}`;
-
-            // 將原本的 gemini-2.5-flash-preview-09-2025 替換為 gemini-1.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
-
-            try {
-                const result = await fetchWithRetry(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                let feedbackHtml = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                // Clean up possible markdown artifacts if model ignored instruction
-                feedbackHtml = feedbackHtml.replace(/```html/g, '').replace(/```/g, '');
-
-                feedbackLoadingEl.classList.add('hidden');
-                feedbackLoadingEl.classList.remove('flex');
-                feedbackContentEl.classList.remove('hidden');
-                feedbackContentEl.innerHTML = feedbackHtml;
-
-            } catch (error) {
-                console.error("Evaluation Error:", error);
-                feedbackLoadingEl.classList.add('hidden');
-                feedbackLoadingEl.classList.remove('flex');
-                feedbackContentEl.classList.remove('hidden');
-                feedbackContentEl.innerHTML = `
-                    <div class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">
-                        <p class="font-bold"><i class="fas fa-exclamation-triangle mr-2"></i>連線或批改發生錯誤</p>
-                        <p class="text-sm mt-2 font-mono bg-white p-2 rounded border border-red-100 text-red-600 break-words">${error.message}</p>
-                        <p class="text-sm mt-2">請確認您的 API 金鑰 (apiKey) 有正確填入，且沒有被舊程式碼覆蓋。</p>
-                    </div>`;
-            } finally {
-                submitBtnEl.disabled = false;
-                submitBtnEl.classList.remove('opacity-70', 'cursor-not-allowed');
-            }
+            sentencesContainer.innerHTML = data.corrections.map(c => `
+                <div class="border-l-4 border-red-400 bg-gray-50 p-4 rounded-r-lg shadow-sm">
+                    <div class="mb-2">
+                        <span class="text-xs font-bold bg-gray-200 text-gray-700 px-2 py-1 rounded">原句</span>
+                        <p class="mt-1 text-gray-800 font-medium line-through decoration-red-400 decoration-2">${c.original}</p>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-xs font-bold bg-red-100 text-red-700 px-2 py-1 rounded"><i class="fas fa-exclamation-triangle"></i> 錯誤點</span>
+                        <p class="mt-1 text-red-700 text-sm">${c.error}</p>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded"><i class="fas fa-lightbulb"></i> 建議修改</span>
+                        <p class="mt-1 text-green-700 font-medium">${c.suggestion}</p>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        // --- Text to Speech Functions ---
+        // Init App
+        window.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+            updateWordCount();
+        });
 
-        let speechSynth = window.speechSynthesis;
-        let utterance = null;
-
-        function stopAudio() {
-            if (speechSynth && speechSynth.speaking) {
-                speechSynth.cancel();
-            }
-            isAudioPlaying = false;
-            ttsIconEl.className = 'fas fa-volume-up';
-            ttsTextEl.textContent = '語音朗讀';
-            playTtsBtnEl.disabled = false;
-        }
-
-        async function toggleSampleAudio() {
-            if (isAudioPlaying) {
-                stopAudio();
-                return;
-            }
-
-            const text = questions[currentIndex].sample;
-            if (!text) return;
-
-            // 播放前先停止其他可能正在進行的語音
-            speechSynth.cancel();
-
-            utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9; // 稍微放慢語速，適合英文學習
-
-            // 嘗試尋找適合的英文女聲 (依據使用者的作業系統/瀏覽器而定)
-            const voices = speechSynth.getVoices();
-            const preferredVoice = voices.find(voice => 
-                voice.lang.includes('en') && (voice.name.includes('Female') || voice.name.includes('Google') || voice.name.includes('Samantha'))
-            );
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
-            }
-
-            utterance.onstart = () => {
-                isAudioPlaying = true;
-                ttsIconEl.className = 'fas fa-stop-circle';
-                ttsTextEl.textContent = '停止朗讀';
-                playTtsBtnEl.disabled = false;
-            };
-
-            utterance.onend = () => {
-                isAudioPlaying = false;
-                ttsIconEl.className = 'fas fa-volume-up';
-                ttsTextEl.textContent = '語音朗讀';
-                playTtsBtnEl.disabled = false;
-            };
-
-            utterance.onerror = (event) => {
-                console.error("SpeechSynthesis Error:", event);
-                alert("瀏覽器語音播放失敗。");
-                isAudioPlaying = false;
-                ttsIconEl.className = 'fas fa-volume-up';
-                ttsTextEl.textContent = '語音朗讀';
-                playTtsBtnEl.disabled = false;
-            };
-
-            speechSynth.speak(utterance);
-        }
-
-        // Run Init
-        window.onload = init;
     </script>
 </body>
 </html>
