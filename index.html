@@ -327,9 +327,13 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'gept-writing-mock-v1'; 
         const apiKey = ""; // Gemini API Key is provided by environment
 
+        const COLLECTION_NAME = 'GEPT-Writing';
+        const DOC_GLOBAL = 'global';
+
         let app, db, auth;
         let currentUserUid = null;
         let currentUserName = null;
+        let isFirebaseReady = false;
         let userProfileData = { history: {}, completedDates: [] };
         let unsubscribeUser = null;
 
@@ -369,18 +373,26 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Start Auth (優先使用系統授權 Token)
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
+                // Start Auth (優先使用系統授權 Token，若失敗則自動退回匿名登入)
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (authError) {
+                    console.warn("Token 登入失敗，自動切換為匿名登入模式:", authError);
                     await signInAnonymously(auth);
                 }
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         currentUserUid = user.uid;
+                        isFirebaseReady = true;
                         updateConnectionStatus('success', '系統就緒');
                         listenToGlobalUsers();
+                    } else {
+                        isFirebaseReady = false;
                     }
                 });
             } catch (error) {
@@ -390,57 +402,80 @@
         }
 
         // --- Data Logic (Following Strict Paths) ---
-        // Global path: artifacts/appId/public/data/global
         function listenToGlobalUsers() {
-            if(!currentUserUid) return;
-            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'globals', 'userList');
+            if(!currentUserUid || !isFirebaseReady) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, DOC_GLOBAL);
             
             onSnapshot(globalRef, (docSnap) => {
-                const data = docSnap.exists() ? docSnap.data() : { users: [] };
-                renderQuickLogin(data.users || []);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.users && Array.isArray(data.users)) {
+                        // 確保資料格式正確並去除重複，反轉陣列讓最新登入者在前面
+                        const names = data.users.map(u => typeof u === 'string' ? u : u.name).filter(Boolean);
+                        const uniqueNames = [...new Set(names)].reverse();
+                        renderQuickLogin(uniqueNames);
+                    } else {
+                        renderQuickLogin([]);
+                    }
+                } else {
+                    renderQuickLogin([]);
+                }
             }, (error) => {
                 console.error("Listen global error:", error);
+                updateConnectionStatus('error', '同步名單失敗');
             });
         }
 
         window.handleLogin = async (nameOverride) => {
             const nameInput = document.getElementById('login-name').value;
             const finalName = (nameOverride || nameInput).trim();
-            if (!finalName) return;
+            if (!finalName) return alert("請輸入您的姓名");
+            if (!isFirebaseReady) return alert("系統連線中，請稍候...");
 
-            currentUserName = finalName;
-            
-            // Update UI
-            document.getElementById('header-user').classList.remove('hidden');
-            document.getElementById('header-user').classList.add('flex');
-            document.getElementById('header-username').textContent = finalName;
-            document.getElementById('dashboard-username').textContent = finalName;
+            const loginBtn = document.querySelector('button[onclick="handleLogin()"]');
+            const originalText = loginBtn.innerText;
+            loginBtn.innerText = '登入中...';
+            loginBtn.disabled = true;
 
             try {
                 // Add to global list for quick login
-                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'globals', 'userList');
+                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, DOC_GLOBAL);
                 const globalSnap = await getDoc(globalRef);
                 let users = globalSnap.exists() ? globalSnap.data().users || [] : [];
-                if (!users.includes(finalName)) {
-                    users.push(finalName);
-                    await setDoc(globalRef, { users: users });
+                
+                // 確保儲存格式為純字串陣列
+                const stringUsers = users.map(u => typeof u === 'string' ? u : u.name).filter(Boolean);
+                
+                if (!stringUsers.includes(finalName)) {
+                    stringUsers.push(finalName);
+                    await setDoc(globalRef, { users: stringUsers }, { merge: true });
                 }
 
-                // Load User Data (Store user profile in public path so it's accessible by name across sessions)
+                currentUserName = finalName;
+                
+                // Update UI
+                document.getElementById('header-user').classList.remove('hidden');
+                document.getElementById('header-user').classList.add('flex');
+                document.getElementById('header-username').textContent = finalName;
+                document.getElementById('dashboard-username').textContent = finalName;
+
+                // Load User Data
                 subscribeToUserData(finalName);
                 appState.showView('dashboard');
                 
             } catch (e) {
                 console.error("Login Error:", e);
-                alert("登入記錄失敗，請確認網路連線或系統設定。");
-                appState.showView('dashboard');
+                alert("登入失敗，請檢查網路連線後重試。");
+            } finally {
+                loginBtn.innerText = originalText;
+                loginBtn.disabled = false;
             }
         };
 
         function subscribeToUserData(userName) {
             if (unsubscribeUser) unsubscribeUser();
-            // Using public path to allow name-based retrieval regardless of anonymous UID
-            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userName);
+            // 使用 COLLECTION_NAME 分類，並加上前綴避免覆蓋全域變數
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, `user_${userName}`);
             
             unsubscribeUser = onSnapshot(userRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -652,7 +687,7 @@
                 newDates.push(dateStr);
             }
 
-            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserName);
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, `user_${currentUserName}`);
             await setDoc(userRef, {
                 history: newHistory,
                 completedDates: newDates
