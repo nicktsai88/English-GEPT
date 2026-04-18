@@ -367,7 +367,10 @@
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        // 嘗試解析 Google API 回傳的具體錯誤訊息
+                        const errorData = await response.json().catch(() => ({}));
+                        const errorMessage = errorData?.error?.message || `HTTP 狀態碼: ${response.status}`;
+                        throw new Error(errorMessage);
                     }
                     return await response.json();
                 } catch (e) {
@@ -416,6 +419,7 @@
 學生作答內容：
 ${text}`;
 
+            // 將原本的 gemini-2.5-flash-preview-09-2025 替換為 gemini-1.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
@@ -447,7 +451,8 @@ ${text}`;
                 feedbackContentEl.innerHTML = `
                     <div class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">
                         <p class="font-bold"><i class="fas fa-exclamation-triangle mr-2"></i>連線或批改發生錯誤</p>
-                        <p class="text-sm mt-1">目前無法連接到批改伺服器，請稍後再試。如果您在預覽環境，請確認 API 金鑰已由環境提供。</p>
+                        <p class="text-sm mt-2 font-mono bg-white p-2 rounded border border-red-100 text-red-600 break-words">${error.message}</p>
+                        <p class="text-sm mt-2">請確認您的 API 金鑰 (apiKey) 有正確填入，且沒有被舊程式碼覆蓋。</p>
                     </div>`;
             } finally {
                 submitBtnEl.disabled = false;
