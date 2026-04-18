@@ -311,7 +311,7 @@
 
         // --- 2. Firebase & API Setup ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -324,7 +324,7 @@
             measurementId: "G-4JD6R9MRPQ"
         };
 
-        const MY_APP_ID = 'gept-writing-mock-v1'; 
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gept-writing-mock-v1'; 
         const apiKey = ""; // Gemini API Key is provided by environment
 
         let app, db, auth;
@@ -364,12 +364,17 @@
         async function initFirebase() {
             try {
                 updateConnectionStatus('loading', '連線至資料庫...');
-                app = initializeApp(firebaseConfig);
+                const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+                app = initializeApp(config);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Start Auth
-                await signInAnonymously(auth);
+                // Start Auth (優先使用系統授權 Token)
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -388,7 +393,7 @@
         // Global path: artifacts/appId/public/data/global
         function listenToGlobalUsers() {
             if(!currentUserUid) return;
-            const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globals', 'userList');
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'globals', 'userList');
             
             onSnapshot(globalRef, (docSnap) => {
                 const data = docSnap.exists() ? docSnap.data() : { users: [] };
@@ -413,7 +418,7 @@
 
             try {
                 // Add to global list for quick login
-                const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globals', 'userList');
+                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'globals', 'userList');
                 const globalSnap = await getDoc(globalRef);
                 let users = globalSnap.exists() ? globalSnap.data().users || [] : [];
                 if (!users.includes(finalName)) {
@@ -427,7 +432,7 @@
                 
             } catch (e) {
                 console.error("Login Error:", e);
-                alert("登入記錄失敗，但仍可繼續使用。");
+                alert("登入記錄失敗，請確認網路連線或系統設定。");
                 appState.showView('dashboard');
             }
         };
@@ -435,7 +440,7 @@
         function subscribeToUserData(userName) {
             if (unsubscribeUser) unsubscribeUser();
             // Using public path to allow name-based retrieval regardless of anonymous UID
-            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'users', userName);
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userName);
             
             unsubscribeUser = onSnapshot(userRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -647,7 +652,7 @@
                 newDates.push(dateStr);
             }
 
-            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'users', currentUserName);
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserName);
             await setDoc(userRef, {
                 history: newHistory,
                 completedDates: newDates
