@@ -388,7 +388,7 @@
         // Global path: artifacts/appId/public/data/global
         function listenToGlobalUsers() {
             if(!currentUserUid) return;
-            const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globalList');
+            const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globals', 'userList');
             
             onSnapshot(globalRef, (docSnap) => {
                 const data = docSnap.exists() ? docSnap.data() : { users: [] };
@@ -413,7 +413,7 @@
 
             try {
                 // Add to global list for quick login
-                const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globalList');
+                const globalRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'globals', 'userList');
                 const globalSnap = await getDoc(globalRef);
                 let users = globalSnap.exists() ? globalSnap.data().users || [] : [];
                 if (!users.includes(finalName)) {
@@ -435,7 +435,7 @@
         function subscribeToUserData(userName) {
             if (unsubscribeUser) unsubscribeUser();
             // Using public path to allow name-based retrieval regardless of anonymous UID
-            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', `user_${userName}`);
+            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'users', userName);
             
             unsubscribeUser = onSnapshot(userRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -647,7 +647,7 @@
                 newDates.push(dateStr);
             }
 
-            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', `user_${currentUserName}`);
+            const userRef = doc(db, 'artifacts', MY_APP_ID, 'public', 'data', 'users', currentUserName);
             await setDoc(userRef, {
                 history: newHistory,
                 completedDates: newDates
