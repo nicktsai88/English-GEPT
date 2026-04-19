@@ -63,7 +63,8 @@
                 <div id="header-user" class="hidden items-center gap-2 font-medium text-gept-dark bg-gept-base px-3 py-1 rounded-full">
                     <i class="fas fa-user-circle text-lg"></i>
                     <span id="header-username"></span>
-                    <button onclick="logout()" class="ml-2 text-xs text-red-500 hover:text-red-700" title="登出"><i class="fas fa-sign-out-alt"></i></button>
+                    <button onclick="openApiModal()" class="ml-2 text-xs text-gray-500 hover:text-gray-700" title="API 金鑰設定"><i class="fas fa-cog text-base"></i></button>
+                    <button onclick="logout()" class="ml-2 text-xs text-red-500 hover:text-red-700" title="登出"><i class="fas fa-sign-out-alt text-base"></i></button>
                 </div>
             </div>
         </div>
@@ -71,6 +72,22 @@
 
     <!-- Main Content Area -->
     <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8 relative">
+
+        <!-- API Key Modal (新增的安全金鑰輸入面板) -->
+        <div id="api-key-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] backdrop-blur-sm">
+            <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full border border-orange-100 mx-4">
+                <h3 class="text-xl font-bold text-gept-dark mb-3"><i class="fas fa-shield-alt text-orange-500 mr-2"></i>安全設定 API 金鑰</h3>
+                <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                    為了防止金鑰外洩，請將您的 API 金鑰輸入於此。<br>
+                    <span class="font-bold text-orange-600">此金鑰將只會安全地儲存於您的瀏覽器 (Local Storage) 中，不會寫入公開的程式碼。</span>
+                </p>
+                <input type="password" id="api-key-input" class="w-full px-4 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light mb-4" placeholder="請貼上您的 API Key (AIzaSy...)">
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeApiModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">關閉</button>
+                    <button onclick="saveApiKey()" class="px-4 py-2 bg-gept-primary text-white hover:bg-gept-dark rounded-lg transition-colors font-medium shadow-md">儲存並使用</button>
+                </div>
+            </div>
+        </div>
 
         <!-- 1. Login View -->
         <div id="login-view" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-lg border border-orange-100 view-section">
@@ -248,13 +265,11 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'gept-writing-mock-v1'; 
         
         // ==========================================
-        // 🚨 修正 403 錯誤的關鍵區域 (請詳閱下方註解)
+        // 🚨 安全性升級：移除寫死的 API Key
         // ==========================================
-        // 1. 若在目前的線上 AI 預覽平台執行，請保持 `apiKey = ""`，系統會自動給予權限。
-        // 2. 若要部署到您的 GitHub Pages (nicktsai88.github.io)，請依照下方步驟修改：
-        //    a. 到 https://aistudio.google.com/ 申請免費 API 金鑰
-        //    b. 將下方那行改為您的金鑰，例如： const apiKey = "AIzaSy您的金鑰內容";
-        const apiKey = "AIzaSyCkgSoluuT4uU0ILMKAcHIixUbuTtXy4O0"; 
+        // 為了相容本平台的預覽環境，保留空字串變數。
+        // 當部署至 GitHub 時，程式會自動改抓取 LocalStorage 內由使用者輸入的金鑰。
+        const apiKey = ""; 
 
         const COLLECTION_NAME = 'GEPT-Writing';
         const DOC_GLOBAL = 'global';
@@ -280,6 +295,28 @@
                 
                 if (viewId === 'dashboard') renderDashboard();
                 if (viewId === 'test') renderTestArea();
+            }
+        };
+
+        // --- API Key Modal Logic ---
+        window.openApiModal = () => {
+            const storedKey = localStorage.getItem('gemini_api_key');
+            if(storedKey) document.getElementById('api-key-input').value = storedKey;
+            document.getElementById('api-key-modal').classList.remove('hidden');
+        };
+
+        window.closeApiModal = () => {
+            document.getElementById('api-key-modal').classList.add('hidden');
+        };
+
+        window.saveApiKey = () => {
+            const key = document.getElementById('api-key-input').value.trim();
+            if(key) {
+                localStorage.setItem('gemini_api_key', key);
+                closeApiModal();
+                alert('✅ API 金鑰已安全儲存於瀏覽器中！請再次嘗試提交批改。');
+            } else {
+                alert('請輸入有效的金鑰。');
             }
         };
 
@@ -555,9 +592,13 @@
 
             } catch (e) {
                 console.error("Submit Error:", e);
-                // 提供更友善的錯誤提示，引導至 GitHub Pages 修正方式
-                if(e.message.includes("403")) {
-                     alert("批改失敗 (API HTTP Error 403)。\n這通常是因為缺少有效的 API Key。若您已將網站部署至 GitHub，請確認程式碼中的 apiKey 是否已填寫。");
+                // 提供更友善且具體的錯誤提示，並自動開啟設定視窗
+                if(e.message.includes("400")) {
+                     alert("批改失敗 (API HTTP Error 400)。\n\n🚨 您的舊金鑰已被 Google 停用！\n因為先前金鑰寫在 GitHub 導致外洩，Google 已強制撤銷。\n\n👉 解決方法：\n1. 前往 Google AI Studio 申請一把「全新的金鑰」。\n2. 點擊網頁右上角的「齒輪圖示」輸入您的新金鑰即可。");
+                     openApiModal();
+                } else if(e.message.includes("403")) {
+                     alert("批改失敗 (API HTTP Error 403)。\n\n缺少有效金鑰或權限不足。\n請點擊右上角「齒輪圖示」設定您的專屬 API 金鑰！");
+                     openApiModal();
                 } else {
                      alert("批改過程中發生錯誤，請稍後再試。\n" + e.message);
                 }
@@ -614,12 +655,11 @@
             const userMessage = `題目提示：\n${questionPrompt}\n\n學生作答：\n${userAnswer}`;
 
             // ==========================================
-            // 🚨 修正 403 錯誤的關鍵區域 2：模型名稱
+            // 🚨 動態讀取金鑰邏輯
             // ==========================================
-            // 若部署到 GitHub Pages，請將下方的 URL 換成公開版本的模型，
-            // 例如把 `gemini-2.5-flash-preview-09-2025` 改為 `gemini-1.5-flash` 或 `gemini-2.0-flash`：
-            // const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}";
+            // 優先使用使用者在網頁介面填寫的 localStorage 金鑰，若無則使用預設(供預覽環境用)
+            const activeKey = localStorage.getItem('gemini_api_key') || apiKey;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeKey}`;
             
             const payload = {
                 contents: [{ parts: [{ text: userMessage }] }],
