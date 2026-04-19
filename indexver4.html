@@ -81,7 +81,7 @@
                     為了防止金鑰外洩，請將您的 API 金鑰輸入於此。<br>
                     <span class="font-bold text-orange-600">此金鑰將只會安全地儲存於您的瀏覽器 (Local Storage) 中，不會寫入公開的程式碼。</span>
                 </p>
-                <input type="text" id="api-key-input" class="w-full px-4 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light mb-4" placeholder="請貼上您的 API Key (AIzaSy...)">
+                <input type="password" id="api-key-input" class="w-full px-4 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light mb-4" placeholder="請貼上您的 API Key (AIzaSy...)">
                 <div class="flex justify-end gap-3">
                     <button onclick="closeApiModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">關閉</button>
                     <button onclick="saveApiKey()" class="px-4 py-2 bg-gept-primary text-white hover:bg-gept-dark rounded-lg transition-colors font-medium shadow-md">儲存並使用</button>
@@ -602,7 +602,7 @@
                 } else if(e.message.includes("429")) {
                      alert("批改失敗 (API HTTP Error 429)。\n\n🚨 請求太頻繁或免費額度已滿！\n\n👉 解決建議：\n1. 若您剛申請新金鑰，請稍等 5 分鐘讓系統同步後再試。\n2. 請避免連續快速點擊提交按鈕。\n3. 今日免費配額可能已達上限。");
                 } else if(e.message.includes("404")) {
-                     alert("批改失敗 (API HTTP Error 404)。\n\n🚨 找不到 AI 模型！\nGoogle 可能已經更新了模型版本。請確認您的程式碼中使用的模型名稱是正確的（例如 gemini-2.5-flash）。");
+                     alert("批改失敗 (API HTTP Error 404)。\n\n🚨 找不到 AI 模型！\n這代表網頁可能還在呼叫舊版測試模型。請確認已將最新程式碼上傳至 GitHub，並且在網頁上「強制重新整理 (Ctrl+F5)」或「開啟無痕視窗」以清除舊版快取！");
                 } else {
                      alert("批改過程中發生錯誤，請稍後再試。\n" + e.message);
                 }
@@ -663,8 +663,8 @@
             // ==========================================
             // 優先使用使用者在網頁介面填寫的 localStorage 金鑰，若無則使用預設(供預覽環境用)
             const activeKey = localStorage.getItem('gemini_api_key') || apiKey;
-            // Google 已淘汰 1.5 版本，請務必使用最新的 gemini-2.5-flash 模型
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`;
+            // 確保這裡是 gemini-1.5-flash，若為其他名稱可能會導致 404 錯誤
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
             
             const payload = {
                 contents: [{ parts: [{ text: userMessage }] }],
