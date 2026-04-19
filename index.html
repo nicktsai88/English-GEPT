@@ -601,6 +601,8 @@
                      openApiModal();
                 } else if(e.message.includes("429")) {
                      alert("批改失敗 (API HTTP Error 429)。\n\n🚨 請求太頻繁或免費額度已滿！\n\n👉 解決建議：\n1. 若您剛申請新金鑰，請稍等 5 分鐘讓系統同步後再試。\n2. 請避免連續快速點擊提交按鈕。\n3. 今日免費配額可能已達上限。");
+                } else if(e.message.includes("404")) {
+                     alert("批改失敗 (API HTTP Error 404)。\n\n🚨 找不到 AI 模型！\n這代表網頁可能還在呼叫舊版測試模型。請確認已將最新程式碼上傳至 GitHub，並且在網頁上「強制重新整理 (Ctrl+F5)」或「開啟無痕視窗」以清除舊版快取！");
                 } else {
                      alert("批改過程中發生錯誤，請稍後再試。\n" + e.message);
                 }
@@ -661,7 +663,7 @@
             // ==========================================
             // 優先使用使用者在網頁介面填寫的 localStorage 金鑰，若無則使用預設(供預覽環境用)
             const activeKey = localStorage.getItem('gemini_api_key') || apiKey;
-            // 已將模型降級為最穩定且免費額度最高的 1.5-flash 版本
+            // 確保這裡是 gemini-1.5-flash，若為其他名稱可能會導致 404 錯誤
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
             
             const payload = {
