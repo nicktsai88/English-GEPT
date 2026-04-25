@@ -429,6 +429,18 @@
                         // 2. 自動從雲端載入所有題庫
                         await loadQuestionsFromCloud();
                         
+                        updateConnectionStatus('success', '系統就緒');
+                    } else {
+                        isFirebaseReady = false;
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                updateConnectionStatus('error', '連線失敗');
+                showToast('無法連線至資料庫', 'error');
+            }
+        }
+
         // --- 升級：從雲端動態拉取題庫 (無硬編碼備案版) ---
         async function loadQuestionsFromCloud() {
             const qList = document.getElementById('question-list');
