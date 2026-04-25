@@ -345,6 +345,7 @@
         
         // 變更：改為從資料庫動態載入，徹底移除硬編碼的備案題庫，確保程式碼極度輕量
         let questionsData = []; 
+        let questionsStatus = 'loading'; // 狀態追蹤：'loading', 'loaded', 'empty', 'error'
         let userProfileData = { historyIndex: {}, completedDates: [] };
         let unsubscribeUser = null;
         
@@ -441,9 +442,9 @@
             }
         }
 
-        // --- 升級：從雲端動態拉取題庫 (無硬編碼備案版) ---
+        // --- 升級：從雲端動態拉取題庫 (無硬編碼備案版 + 狀態追蹤修復) ---
         async function loadQuestionsFromCloud() {
-            const qList = document.getElementById('question-list');
+            questionsStatus = 'loading';
             try {
                 const qRef = collection(db, 'artifacts', appId, 'public', 'data', COL_QUESTIONS);
                 const qSnap = await getDocs(qRef);
@@ -451,46 +452,32 @@
                 
                 if (qSnap.empty) {
                     console.warn("雲端題庫目前為空。");
+                    questionsStatus = 'empty';
                     document.getElementById('total-q-count').textContent = "0";
-                    if (appState.currentView === 'dashboard') {
-                        qList.innerHTML = `
-                            <div class="text-center py-12 bg-orange-50 rounded-2xl border border-orange-100">
-                                <i class="fas fa-database text-4xl text-orange-300 mb-4"></i>
-                                <h3 class="text-xl font-bold text-gept-dark mb-2">雲端題庫尚未建立</h3>
-                                <p class="text-gray-500 text-lg">請執行 <b>migration_tool.html</b> 來初始化題庫資料。</p>
-                            </div>`;
-                    }
-                    return;
-                }
-
-                qSnap.forEach(doc => {
-                    questionsData.push({ id: doc.id, ...doc.data() });
-                });
-                
-                // 確保按照題目順序 (q1, q2, q3...) 排序
-                questionsData.sort((a, b) => {
-                    const numA = parseInt(a.id.replace('q', '')) || 0;
-                    const numB = parseInt(b.id.replace('q', '')) || 0;
-                    return numA - numB;
-                });
-                
-                document.getElementById('total-q-count').textContent = questionsData.length;
-                
-                // 如果已經在 Dashboard 頁面，刷新列表
-                if (appState.currentView === 'dashboard') {
-                    renderDashboard();
+                } else {
+                    qSnap.forEach(doc => {
+                        questionsData.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // 確保按照題目順序 (q1, q2, q3...) 排序
+                    questionsData.sort((a, b) => {
+                        const numA = parseInt(a.id.replace('q', '')) || 0;
+                        const numB = parseInt(b.id.replace('q', '')) || 0;
+                        return numA - numB;
+                    });
+                    
+                    questionsStatus = 'loaded';
+                    document.getElementById('total-q-count').textContent = questionsData.length;
                 }
             } catch (error) {
                 console.error("Failed to load questions:", error);
+                questionsStatus = 'error';
                 document.getElementById('total-q-count').textContent = "Error";
-                if (appState.currentView === 'dashboard') {
-                    qList.innerHTML = `
-                        <div class="text-center py-12 bg-red-50 rounded-2xl border border-red-100">
-                            <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
-                            <h3 class="text-xl font-bold text-red-700 mb-2">無法連線至雲端題庫</h3>
-                            <p class="text-red-500 text-lg">請檢查網路連線或資料庫權限設定。</p>
-                        </div>`;
-                }
+            }
+            
+            // 如果已經在 Dashboard 頁面（例如登入後重新整理），則刷新列表
+            if (appState.currentView === 'dashboard') {
+                renderDashboard();
             }
         }
 
@@ -626,11 +613,32 @@
             renderCalendar();
             const qList = document.getElementById('question-list');
             
-            if (questionsData.length === 0) {
+            if (questionsStatus === 'loading') {
                 qList.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fas fa-spinner fa-spin text-2xl mb-3"></i><br>正在從雲端載入題庫...</div>';
                 return;
             }
 
+            if (questionsStatus === 'empty') {
+                qList.innerHTML = `
+                    <div class="text-center py-12 bg-orange-50 rounded-2xl border border-orange-100">
+                        <i class="fas fa-database text-4xl text-orange-300 mb-4"></i>
+                        <h3 class="text-xl font-bold text-gept-dark mb-2">雲端題庫尚未建立</h3>
+                        <p class="text-gray-500 text-lg">請點擊右方開啟 <b>migration_tool.html</b> 來初始化題庫資料。<br>上傳完成後，重新整理本頁面即可。</p>
+                    </div>`;
+                return;
+            }
+
+            if (questionsStatus === 'error') {
+                qList.innerHTML = `
+                    <div class="text-center py-12 bg-red-50 rounded-2xl border border-red-100">
+                        <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
+                        <h3 class="text-xl font-bold text-red-700 mb-2">無法連線至雲端題庫</h3>
+                        <p class="text-red-500 text-lg">請檢查網路連線或資料庫權限設定。</p>
+                    </div>`;
+                return;
+            }
+
+            // questionsStatus === 'loaded'
             qList.innerHTML = questionsData.map((q, index) => {
                 // 改由檢查輕量級的 historyIndex 判斷是否完成
                 const savedIndex = userProfileData.historyIndex?.[q.id];
