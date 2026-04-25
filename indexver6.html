@@ -30,251 +30,221 @@
     </script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #FFF7ED; color: #431407; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 1rem; transition: all 0.2s ease; }
-        .day-header { font-weight: bold; color: #C2410C; text-align: center; padding: 4px; font-size: 1.1rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.875rem; }
+        .day-header { font-weight: bold; color: #C2410C; text-align: center; padding: 4px; }
         .day-empty { background-color: transparent; }
         .day-normal { background-color: #FFEDD5; color: #431407; }
+        .day-completed { background-color: #F97316; color: white; font-weight: bold; position: relative; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3); }
+        .day-completed::after { content: '★'; position: absolute; top: 2px; right: 2px; font-size: 0.6rem; color: #FEF08A; }
         
-        /* 完成的日期樣式：加入互動性與點擊游標 */
-        .day-completed { background-color: #F97316; color: white; font-weight: bold; position: relative; box-shadow: 0 3px 6px rgba(249, 115, 22, 0.3); cursor: pointer; }
-        .day-completed:hover { background-color: #EA580C; transform: translateY(-2px); box-shadow: 0 5px 10px rgba(249, 115, 22, 0.4); }
-        .day-completed::after { content: '★'; position: absolute; top: 3px; right: 4px; font-size: 0.75rem; color: #FEF08A; }
-        
-        .loader { border: 4px solid #FFEDD5; border-top: 4px solid #F97316; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        .loader { border: 4px solid #FFEDD5; border-top: 4px solid #F97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: #FFEDD5; border-radius: 5px; }
-        ::-webkit-scrollbar-thumb { background: #FDBA74; border-radius: 5px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #FFEDD5; }
+        ::-webkit-scrollbar-thumb { background: #FDBA74; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #F97316; }
 
         /* 防止英文字過長不換行導致跑版 */
         .break-words { word-break: break-word; overflow-wrap: break-word; }
 
-        /* --- Markdown 報告專用渲染樣式 (為大螢幕閱讀加強) --- */
-        .markdown-body { color: #431407; line-height: 1.8; font-size: 1.1rem; }
-        @media (min-width: 768px) { .markdown-body { font-size: 1.2rem; } }
-        .markdown-body h1 { font-size: 1.75rem; font-weight: bold; color: #C2410C; margin: 2rem 0 1rem; border-bottom: 2px solid #FFEDD5; padding-bottom: 0.5rem; }
+        /* --- 新增：Markdown 報告專用渲染樣式 --- */
+        .markdown-body { color: #431407; line-height: 1.7; font-size: 0.95rem; }
+        @media (min-width: 640px) { .markdown-body { font-size: 1rem; } }
+        .markdown-body h1 { font-size: 1.5rem; font-weight: bold; color: #C2410C; margin: 1.5rem 0 1rem; border-bottom: 2px solid #FFEDD5; padding-bottom: 0.5rem; }
         .markdown-body h1:first-child { margin-top: 0; }
-        .markdown-body h2 { font-size: 1.5rem; font-weight: bold; color: #9A3412; margin: 1.75rem 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
-        .markdown-body h3 { font-size: 1.3rem; font-weight: bold; color: #F97316; margin: 1.5rem 0 0.5rem; }
-        .markdown-body h4 { font-size: 1.15rem; font-weight: bold; color: #431407; margin: 1.25rem 0 0.5rem; background-color: #FFEDD5; padding: 0.35rem 0.85rem; border-radius: 0.5rem; display: inline-block; }
-        .markdown-body p { margin-bottom: 1.2rem; }
-        .markdown-body ul { list-style-type: none; padding-left: 0.5rem; margin-bottom: 1.2rem; }
-        .markdown-body li { margin-bottom: 0.75rem; }
+        .markdown-body h2 { font-size: 1.25rem; font-weight: bold; color: #9A3412; margin: 1.5rem 0 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .markdown-body h3 { font-size: 1.1rem; font-weight: bold; color: #F97316; margin: 1.2rem 0 0.5rem; }
+        .markdown-body h4 { font-size: 1rem; font-weight: bold; color: #431407; margin: 1rem 0 0.5rem; background-color: #FFEDD5; padding: 0.25rem 0.75rem; border-radius: 0.5rem; display: inline-block; }
+        .markdown-body p { margin-bottom: 1rem; }
+        .markdown-body ul { list-style-type: none; padding-left: 0.5rem; margin-bottom: 1rem; }
+        .markdown-body li { margin-bottom: 0.5rem; }
         .markdown-body strong { font-weight: 700; color: #b91c1c; } /* 凸顯錯誤或重點 */
-        .markdown-body blockquote { border-left: 5px solid #F97316; background-color: #FFF7ED; padding: 1.25rem; margin: 1.5rem 0; border-radius: 0 0.5rem 0.5rem 0; font-style: italic; color: #78350F; font-size: 1.15rem; }
+        .markdown-body blockquote { border-left: 4px solid #F97316; background-color: #FFF7ED; padding: 1rem; margin: 1.5rem 0; border-radius: 0 0.5rem 0.5rem 0; font-style: italic; color: #78350F; }
         .markdown-body blockquote p:last-child { margin-bottom: 0; }
         /* Table Styles */
-        .markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background-color: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .markdown-body th, .markdown-body td { border: 1px solid #FED7AA; padding: 1rem 1.25rem; text-align: left; }
-        .markdown-body th { background-color: #FFEDD5; font-weight: bold; color: #9A3412; white-space: nowrap; font-size: 1.1rem; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background-color: white; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .markdown-body th, .markdown-body td { border: 1px solid #FED7AA; padding: 0.75rem 1rem; text-align: left; }
+        .markdown-body th { background-color: #FFEDD5; font-weight: bold; color: #9A3412; white-space: nowrap; }
         .markdown-body tr:nth-child(even) { background-color: #FFF7ED; }
-        .markdown-body hr { border: 0; border-top: 2px dashed #FDBA74; margin: 2.5rem 0; }
+        .markdown-body hr { border: 0; border-top: 1px dashed #FDBA74; margin: 2rem 0; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"></div>
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2"></div>
 
     <!-- Top Navigation -->
     <header class="bg-white shadow-md sticky top-0 z-50">
-        <!-- 放寬到 98% 以適應 iPad 大螢幕 -->
-        <div class="w-[96%] xl:w-[98%] max-w-none mx-auto px-4 h-20 flex items-center justify-between">
-            <div class="flex items-center gap-3 shrink-0">
-                <i class="fas fa-pen-nib text-gept-primary text-2xl sm:text-3xl"></i>
-                <h1 class="text-xl sm:text-2xl font-bold text-gept-text cursor-pointer truncate" onclick="appState.showView('dashboard')">寫作模擬平台</h1>
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <i class="fas fa-pen-nib text-gept-primary text-xl sm:text-2xl"></i>
+                <h1 class="text-lg sm:text-xl font-bold text-gept-text cursor-pointer truncate" onclick="appState.showView('dashboard')">寫作模擬平台</h1>
             </div>
-            <div class="flex items-center gap-4 sm:gap-6 shrink-0">
-                <div id="connection-status" class="flex items-center gap-2 text-sm sm:text-base">
+            <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+                <div id="connection-status" class="flex items-center gap-2 text-xs sm:text-sm">
                     <div class="w-3 h-3 rounded-full bg-gray-400" id="status-light"></div>
                     <span id="status-text" class="text-gray-600 hidden md:inline">初始化中...</span>
                 </div>
-                <div id="header-user" class="hidden items-center gap-2 font-medium text-gept-dark bg-gept-base px-4 py-2 rounded-full text-base sm:text-lg">
-                    <i class="fas fa-user-circle text-xl"></i>
-                    <span id="header-username" class="max-w-[100px] sm:max-w-[200px] truncate"></span>
-                    <button onclick="openApiModal()" class="ml-2 text-gray-500 hover:text-gray-700" title="API 金鑰設定"><i class="fas fa-cog"></i></button>
-                    <button onclick="logout()" class="ml-2 text-red-500 hover:text-red-700" title="登出"><i class="fas fa-sign-out-alt"></i></button>
+                <div id="header-user" class="hidden items-center gap-1 sm:gap-2 font-medium text-gept-dark bg-gept-base px-2 sm:px-3 py-1 rounded-full text-sm sm:text-base">
+                    <i class="fas fa-user-circle text-base sm:text-lg"></i>
+                    <span id="header-username" class="max-w-[70px] sm:max-w-[120px] truncate"></span>
+                    <button onclick="openApiModal()" class="ml-1 text-gray-500 hover:text-gray-700" title="API 金鑰設定"><i class="fas fa-cog"></i></button>
+                    <button onclick="logout()" class="ml-1 text-red-500 hover:text-red-700" title="登出"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
             </div>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <!-- 同樣改用 w-[96%] 放大寬度 -->
-    <main class="flex-grow w-[96%] xl:w-[98%] max-w-none mx-auto px-4 py-8 relative flex flex-col items-center">
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8 relative flex flex-col items-center">
 
         <!-- API Key Modal -->
         <div id="api-key-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] backdrop-blur-sm px-4">
-            <div class="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full border border-orange-100 max-h-[90vh] overflow-y-auto">
-                <h3 class="text-2xl font-bold text-gept-dark mb-4"><i class="fas fa-shield-alt text-orange-500 mr-3"></i>安全設定 API 金鑰</h3>
-                <p class="text-base text-gray-600 mb-6 leading-relaxed">
+            <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full border border-orange-100 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-xl font-bold text-gept-dark mb-3"><i class="fas fa-shield-alt text-orange-500 mr-2"></i>安全設定 API 金鑰</h3>
+                <p class="text-sm text-gray-600 mb-4 leading-relaxed">
                     為了防止金鑰外洩，請將您的 API 金鑰輸入於此。<br>
-                    <span class="font-bold text-orange-600 mt-2 block">此金鑰將只會安全地儲存於您的瀏覽器 (Local Storage) 中，不會寫入公開的程式碼。</span>
+                    <span class="font-bold text-orange-600">此金鑰將只會安全地儲存於您的瀏覽器 (Local Storage) 中，不會寫入公開的程式碼。</span>
                 </p>
-                <input type="text" id="api-key-input" class="w-full px-5 py-3 text-lg rounded-xl border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light mb-6" placeholder="請貼上您的 API Key (AIzaSy...)">
-                <div class="flex justify-end gap-4">
-                    <button onclick="closeApiModal()" class="px-6 py-3 text-lg text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors font-medium">關閉</button>
-                    <button onclick="saveApiKey()" class="px-6 py-3 text-lg bg-gept-primary text-white hover:bg-gept-dark rounded-xl transition-colors font-medium shadow-md">儲存並使用</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- History Content Modal (點擊日曆後顯示的視窗) -->
-        <div id="history-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[70] backdrop-blur-sm px-4">
-            <div class="bg-white rounded-2xl w-[90%] xl:w-[75%] max-w-[1400px] h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-orange-200">
-                <div class="p-5 border-b border-orange-200 flex justify-between items-center bg-orange-50 shrink-0">
-                    <h3 class="text-2xl font-bold text-gept-dark flex items-center gap-3" id="history-modal-title">
-                        <i class="far fa-calendar-alt"></i> 練習紀錄
-                    </h3>
-                    <button onclick="closeHistoryModal()" class="text-gray-500 hover:text-red-500 text-4xl leading-none">&times;</button>
-                </div>
-                <!-- 內容捲動區 -->
-                <div id="history-modal-content" class="p-6 md:p-10 overflow-y-auto flex-grow bg-white">
-                    <!-- Javascript 將填入列表或完整解析 -->
+                <input type="text" id="api-key-input" class="w-full px-4 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light mb-4" placeholder="請貼上您的 API Key (AIzaSy...)">
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeApiModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">關閉</button>
+                    <button onclick="saveApiKey()" class="px-4 py-2 bg-gept-primary text-white hover:bg-gept-dark rounded-lg transition-colors font-medium shadow-md">儲存並使用</button>
                 </div>
             </div>
         </div>
 
         <!-- 1. Login View -->
-        <div id="login-view" class="max-w-xl w-full bg-white p-10 rounded-2xl shadow-lg border border-orange-100 view-section mt-12">
-            <h2 class="text-3xl font-bold text-center text-gept-dark mb-8">歡迎使用寫作平台</h2>
+        <div id="login-view" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-orange-100 view-section mt-10">
+            <h2 class="text-2xl font-bold text-center text-gept-dark mb-6">歡迎使用寫作平台</h2>
             
-            <div class="mb-8">
-                <label class="block text-lg font-medium mb-3">請輸入您的姓名登入：</label>
-                <div class="flex gap-3">
-                    <input type="text" id="login-name" class="flex-grow px-5 py-3 text-lg w-full rounded-xl border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light" placeholder="例如：王小明">
-                    <button onclick="handleLogin()" class="bg-gept-primary text-white px-8 py-3 text-lg rounded-xl hover:bg-gept-dark transition-colors shadow-md font-medium shrink-0">登入</button>
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">請輸入您的姓名登入：</label>
+                <div class="flex gap-2">
+                    <input type="text" id="login-name" class="flex-grow px-4 py-2 w-full rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-gept-primary bg-gept-light" placeholder="例如：王小明">
+                    <button onclick="handleLogin()" class="bg-gept-primary text-white px-6 py-2 rounded-lg hover:bg-gept-dark transition-colors shadow-md font-medium shrink-0">登入</button>
                 </div>
             </div>
 
-            <div class="border-t border-orange-100 pt-8">
-                <h3 class="text-base font-medium text-gray-500 mb-4 flex items-center gap-2">
-                    <i class="fas fa-bolt text-yellow-500 text-lg"></i> 快速登入 (點擊頭像)
+            <div class="border-t border-orange-100 pt-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-4 flex items-center gap-2">
+                    <i class="fas fa-bolt text-yellow-500"></i> 快速登入 (點擊頭像)
                 </h3>
                 <div id="quick-login-list" class="flex flex-wrap gap-3">
-                    <div class="text-base text-gray-400 italic">載入中...</div>
+                    <div class="text-sm text-gray-400 italic">載入中...</div>
                 </div>
             </div>
         </div>
 
         <!-- 2. Dashboard View -->
         <div id="dashboard-view" class="hidden view-section w-full">
-            <div class="flex flex-col md:flex-row gap-8 w-full">
+            <div class="flex flex-col md:flex-row gap-6 w-full">
                 <!-- Left: Calendar Profile -->
-                <div class="w-full md:w-[35%] xl:w-[30%] bg-white p-8 rounded-3xl shadow-md border border-orange-100 h-fit shrink-0">
-                    <div class="text-center mb-8">
-                        <div class="w-24 h-24 bg-gept-base rounded-full mx-auto flex items-center justify-center text-gept-primary text-4xl mb-4 shadow-inner">
+                <div class="w-full md:w-1/3 bg-white p-6 rounded-2xl shadow-md border border-orange-100 h-fit shrink-0">
+                    <div class="text-center mb-6">
+                        <div class="w-20 h-20 bg-gept-base rounded-full mx-auto flex items-center justify-center text-gept-primary text-3xl mb-3 shadow-inner">
                             <i class="fas fa-user-graduate"></i>
                         </div>
-                        <h2 class="text-2xl font-bold break-words" id="dashboard-username">使用者</h2>
-                        <p class="text-base text-gray-500 mt-2">你的專屬寫作練習區</p>
+                        <h2 class="text-xl font-bold break-words" id="dashboard-username">使用者</h2>
+                        <p class="text-sm text-gray-500 mt-1">你的專屬寫作練習區</p>
                     </div>
                     
-                    <div class="border-t border-orange-100 pt-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-lg text-gept-dark flex items-center gap-2"><i class="far fa-calendar-check"></i>學習日曆</h3>
-                            <!-- 新增切換月份的按鈕區塊 -->
-                            <div class="flex items-center gap-3 bg-orange-100 px-3 py-1.5 rounded-lg text-orange-800 font-medium">
-                                <button onclick="changeMonth(-1)" class="hover:text-orange-500 transition-colors p-1"><i class="fas fa-chevron-left"></i></button>
-                                <span id="calendar-month-year" class="text-base tracking-wide min-w-[80px] text-center"></span>
-                                <button onclick="changeMonth(1)" class="hover:text-orange-500 transition-colors p-1"><i class="fas fa-chevron-right"></i></button>
-                            </div>
+                    <div class="border-t border-orange-100 pt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-gept-dark"><i class="far fa-calendar-check mr-2"></i>學習日曆</h3>
+                            <span id="calendar-month-year" class="text-sm font-medium bg-orange-100 px-2 py-1 rounded text-orange-800"></span>
                         </div>
-                        <div class="calendar-grid mb-3">
+                        <div class="calendar-grid mb-2">
                             <div class="day-header">日</div><div class="day-header">一</div><div class="day-header">二</div><div class="day-header">三</div><div class="day-header">四</div><div class="day-header">五</div><div class="day-header">六</div>
                         </div>
                         <div id="calendar-body" class="calendar-grid"></div>
-                        <div class="mt-6 text-sm text-gray-500 flex items-center justify-center gap-3 bg-gray-50 py-2 rounded-lg">
-                            <span class="w-4 h-4 inline-block bg-gept-primary rounded shadow-sm relative"><span class="absolute top-[-1px] right-[1px] text-[10px] text-yellow-200">★</span></span> 
-                            <span>表示當日有紀錄 <strong class="text-gept-dark">(點擊可看解析)</strong></span>
+                        <div class="mt-4 text-xs text-gray-500 flex items-center justify-center gap-2">
+                            <span class="w-3 h-3 inline-block bg-gept-primary rounded-sm shadow-sm"></span> 表示當日有完成練習
                         </div>
                     </div>
                 </div>
 
                 <!-- Right: Question List -->
-                <div class="w-full md:w-[65%] xl:w-[70%] bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 flex-grow">
-                    <h2 class="text-2xl font-bold mb-6 text-gept-dark border-b-2 border-orange-200 pb-3 flex justify-between items-end">
-                        <span class="flex items-center gap-3"><i class="fas fa-list-ul"></i> 模擬試題列表</span>
-                        <span class="text-base font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">共 <span id="total-q-count">10</span> 題</span>
+                <div class="w-full md:w-2/3 bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-orange-100 flex-grow">
+                    <h2 class="text-xl font-bold mb-4 text-gept-dark border-b-2 border-orange-200 pb-2 flex justify-between items-center">
+                        <span><i class="fas fa-list-ul mr-2"></i>模擬試題列表</span>
+                        <span class="text-sm font-normal text-gray-500">共 <span id="total-q-count">10</span> 題</span>
                     </h2>
-                    <!-- 列表高度放寬，在 iPad 上可顯示更多題 -->
-                    <div id="question-list" class="space-y-4 max-h-[750px] overflow-y-auto pr-3"></div>
+                    <div id="question-list" class="space-y-3 max-h-[600px] overflow-y-auto pr-2"></div>
                 </div>
             </div>
         </div>
 
         <!-- 3. Test Interface View -->
-        <!-- 寬度也放寬為 92% -->
-        <div id="test-view" class="hidden view-section w-[92%] xl:w-[85%] max-w-[1400px] mx-auto space-y-6">
-            <button onclick="appState.showView('dashboard')" class="text-gept-dark hover:text-gept-primary mb-2 inline-flex items-center gap-2 font-bold text-lg transition-colors bg-white px-4 py-2 rounded-lg shadow-sm border border-orange-100 w-fit">
+        <div id="test-view" class="hidden view-section w-full max-w-4xl mx-auto space-y-4">
+            <button onclick="appState.showView('dashboard')" class="text-gept-dark hover:text-gept-primary mb-2 inline-flex items-center gap-1 font-medium transition-colors">
                 <i class="fas fa-arrow-left"></i> 返回列表
             </button>
             
-            <div class="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-200">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 border-b border-orange-100 pb-4">
-                    <h2 id="q-title" class="text-2xl md:text-3xl font-bold text-gray-800 break-words"></h2>
-                    <span id="q-type" class="bg-orange-100 text-orange-800 text-sm px-4 py-1.5 rounded-full font-bold border border-orange-200 whitespace-nowrap"></span>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-orange-200">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4 border-b pb-3">
+                    <h2 id="q-title" class="text-xl font-bold text-gray-800 break-words"></h2>
+                    <span id="q-type" class="bg-orange-100 text-orange-800 text-xs px-3 py-1 rounded-full font-medium border border-orange-200 whitespace-nowrap self-start"></span>
                 </div>
-                <div class="bg-orange-50 p-6 rounded-2xl border border-orange-100 mb-6">
-                    <h3 class="font-bold text-gept-dark mb-3 text-lg"><i class="fas fa-info-circle mr-2"></i>說明：</h3>
-                    <p id="q-instructions" class="text-gray-700 text-lg leading-relaxed mb-6 break-words"></p>
-                    <h3 class="font-bold text-gept-dark mb-3 text-lg"><i class="fas fa-comment-dots mr-2"></i>提示：</h3>
-                    <p id="q-prompt" class="text-gray-800 whitespace-pre-wrap leading-relaxed text-lg break-words bg-white p-4 rounded-xl border border-orange-50 shadow-sm"></p>
+                <div class="bg-orange-50 p-4 rounded-lg border border-orange-100 mb-4">
+                    <h3 class="font-bold text-gept-dark mb-2"><i class="fas fa-info-circle mr-1"></i>說明：</h3>
+                    <p id="q-instructions" class="text-gray-700 text-sm leading-relaxed mb-4 break-words"></p>
+                    <h3 class="font-bold text-gept-dark mb-2"><i class="fas fa-comment-dots mr-1"></i>提示：</h3>
+                    <p id="q-prompt" class="text-gray-800 whitespace-pre-wrap leading-relaxed text-sm sm:text-base break-words"></p>
                 </div>
                 
-                <button onclick="toggleSample()" class="text-base text-gept-primary hover:text-gept-dark flex items-center gap-2 font-bold bg-orange-50 px-4 py-2 rounded-lg transition-colors">
+                <button onclick="toggleSample()" class="text-sm text-gept-primary hover:text-gept-dark flex items-center gap-1 font-medium">
                     <i id="sample-icon" class="fas fa-chevron-down"></i> <span id="sample-text">顯示範例文章</span>
                 </button>
-                <div id="q-sample" class="hidden mt-4 p-6 bg-gray-50 rounded-2xl border border-gray-200 text-gray-700 whitespace-pre-wrap text-lg leading-relaxed shadow-inner break-words"></div>
+                <div id="q-sample" class="hidden mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-wrap text-sm leading-relaxed shadow-inner break-words"></div>
             </div>
 
             <!-- Answer Area -->
-            <div class="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-200">
-                <div class="flex justify-between items-end mb-4">
-                    <h3 class="font-bold text-xl text-gray-800 flex items-center gap-2"><i class="fas fa-pencil-alt text-gept-primary"></i>您的作答</h3>
-                    <span id="word-count" class="text-base text-gray-600 bg-gray-100 px-3 py-1 rounded-lg font-bold border border-gray-200">字數: 0</span>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-orange-200">
+                <div class="flex justify-between items-end mb-3">
+                    <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-pencil-alt mr-2 text-gept-primary"></i>您的作答</h3>
+                    <span id="word-count" class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded font-medium">字數: 0</span>
                 </div>
-                <!-- 加大 Textarea 高度適應大螢幕 -->
-                <textarea id="user-answer" class="w-full h-64 sm:h-80 p-6 rounded-2xl border-2 border-orange-200 focus:border-gept-primary focus:ring-0 resize-y bg-gept-light transition-colors text-xl leading-relaxed shadow-inner" placeholder="請在此輸入您的英文作文..."></textarea>
+                <textarea id="user-answer" class="w-full h-48 sm:h-64 p-4 rounded-lg border-2 border-orange-200 focus:border-gept-primary focus:ring-0 resize-y bg-gept-light transition-colors text-base sm:text-lg leading-relaxed" placeholder="請在此輸入您的英文作文..."></textarea>
                 
-                <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-6">
-                    <div id="last-saved" class="text-base text-gray-500 italic w-full text-center sm:text-left font-medium"></div>
-                    <button id="submit-btn" onclick="submitAnswer()" class="bg-gept-primary text-white w-full sm:w-auto px-10 py-4 rounded-2xl hover:bg-orange-600 transition-all shadow-lg font-bold text-lg flex items-center justify-center gap-3 transform hover:-translate-y-1 shrink-0">
-                        <i class="fas fa-paper-plane text-xl"></i> 提交給 AI 老師批改
+                <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div id="last-saved" class="text-sm text-gray-500 italic w-full text-center sm:text-left"></div>
+                    <button id="submit-btn" onclick="submitAnswer()" class="bg-gept-primary text-white w-full sm:w-auto px-8 py-3 rounded-xl hover:bg-orange-600 transition-colors shadow-lg font-bold flex items-center justify-center gap-2 transform hover:-translate-y-0.5 shrink-0">
+                        <i class="fas fa-paper-plane"></i> 提交給 AI 老師批改
                     </button>
                 </div>
             </div>
             
             <!-- Loading Overlay -->
-            <div id="ai-loading" class="hidden bg-white/90 absolute inset-0 z-10 flex flex-col items-center justify-center rounded-3xl backdrop-blur-md m-4">
-                <div class="loader mb-6"></div>
-                <p class="text-gept-dark font-bold text-2xl animate-pulse text-center px-4">AI 老師正在認真批改中...</p>
-                <p class="text-lg text-gray-600 mt-3 font-medium">請稍候，這可能需要幾秒鐘</p>
+            <div id="ai-loading" class="hidden bg-white/90 absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm m-4">
+                <div class="loader mb-4"></div>
+                <p class="text-gept-dark font-bold text-lg animate-pulse text-center px-4">AI 老師正在認真批改中...</p>
+                <p class="text-sm text-gray-500 mt-2">請稍候，這可能需要幾秒鐘</p>
             </div>
         </div>
 
-        <!-- 4. Feedback View -->
-        <div id="feedback-view" class="hidden view-section w-[92%] xl:w-[85%] max-w-[1400px] mx-auto space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 bg-white p-6 rounded-3xl shadow-sm border border-orange-100">
-                <h2 class="text-2xl md:text-3xl font-bold text-gept-dark flex items-center gap-3">
-                    <i class="fas fa-robot text-orange-500 text-3xl md:text-4xl"></i> AI 老師指導報告
+        <!-- 4. Feedback View (重構以支援 Markdown) -->
+        <div id="feedback-view" class="hidden view-section w-full max-w-4xl mx-auto space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-orange-100">
+                <h2 class="text-xl sm:text-2xl font-bold text-gept-dark flex items-center gap-2">
+                    <i class="fas fa-robot text-orange-500 text-2xl sm:text-3xl"></i> AI 老師指導報告
                 </h2>
-                <div class="flex gap-3 w-full sm:w-auto">
-                    <button onclick="appState.showView('test')" class="flex-1 sm:flex-none px-6 py-3 border-2 border-gept-primary text-gept-primary rounded-xl hover:bg-orange-50 font-bold transition-colors text-center text-lg shadow-sm">
-                        <i class="fas fa-undo mr-2"></i> 修改作文
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="appState.showView('test')" class="flex-1 sm:flex-none px-4 py-2 border-2 border-gept-primary text-gept-primary rounded-lg hover:bg-orange-50 font-medium transition-colors text-center text-sm sm:text-base">
+                        <i class="fas fa-undo mr-1"></i> 修改作文
                     </button>
-                    <button onclick="appState.showView('dashboard')" class="flex-1 sm:flex-none px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-bold transition-colors text-center text-lg shadow-sm">
-                        <i class="fas fa-list mr-2"></i> 回列表
+                    <button onclick="appState.showView('dashboard')" class="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors text-center text-sm sm:text-base">
+                        回列表
                     </button>
                 </div>
             </div>
 
             <!-- Markdown Content Area -->
-            <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border-2 border-orange-100 markdown-body break-words" id="fb-content">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-md border border-orange-100 markdown-body break-words" id="fb-content">
                 <!-- AI 回傳的 Markdown 報告將透過 marked.js 渲染於此 -->
             </div>
         </div>
@@ -297,15 +267,17 @@
             if (type === 'error') icon = 'fa-exclamation-circle';
             if (type === 'success') icon = 'fa-check-circle';
 
-            toast.className = `${bgColors[type] || bgColors['info']} text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-300 translate-y-12 opacity-0 flex items-start gap-4 max-w-[90vw] sm:max-w-lg pointer-events-auto border border-white/20`;
-            toast.innerHTML = `<i class="fas ${icon} mt-1.5 text-xl shrink-0"></i><div class="text-base font-medium leading-relaxed break-words whitespace-pre-wrap">${message}</div>`;
+            toast.className = `${bgColors[type] || bgColors['info']} text-white px-5 py-3 rounded-xl shadow-lg transform transition-all duration-300 translate-y-12 opacity-0 flex items-start gap-3 max-w-[90vw] sm:max-w-md pointer-events-auto`;
+            toast.innerHTML = `<i class="fas ${icon} mt-1 shrink-0"></i><div class="text-sm font-medium leading-relaxed break-words whitespace-pre-wrap">${message}</div>`;
             
             container.appendChild(toast);
             
+            // Animate in
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-y-12', 'opacity-0');
             });
             
+            // Remove after delay (longer for errors)
             const duration = type === 'error' ? 5000 : 3000;
             setTimeout(() => {
                 toast.classList.add('translate-y-12', 'opacity-0');
@@ -344,6 +316,10 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'gept-writing-mock-v1'; 
+        
+        // ==========================================
+        // 🚨 安全性升級：移除寫死的 API Key
+        // ==========================================
         const apiKey = ""; 
 
         const COLLECTION_NAME = 'GEPT-Writing';
@@ -355,9 +331,6 @@
         let isFirebaseReady = false;
         let userProfileData = { history: {}, completedDates: [] };
         let unsubscribeUser = null;
-        
-        // 紀錄當前日曆檢視的年月
-        let currentCalendarDate = new Date();
 
         // State Management
         window.appState = {
@@ -372,10 +345,7 @@
                 document.getElementById(`${viewId}-view`).classList.remove('hidden');
                 this.currentView = viewId;
                 
-                if (viewId === 'dashboard') {
-                    renderDashboard();
-                    window.scrollTo(0, 0);
-                }
+                if (viewId === 'dashboard') renderDashboard();
                 if (viewId === 'test') renderTestArea();
             }
         };
@@ -540,12 +510,12 @@
         function renderQuickLogin(users) {
             const container = document.getElementById('quick-login-list');
             if (users.length === 0) {
-                container.innerHTML = '<span class="text-base text-gray-400">尚無紀錄</span>';
+                container.innerHTML = '<span class="text-sm text-gray-400">尚無紀錄</span>';
                 return;
             }
             container.innerHTML = users.map(u => `
-                <button onclick="handleLogin('${u}')" class="bg-orange-100 text-gept-dark px-4 py-2 rounded-full text-base font-bold hover:bg-orange-200 transition border border-orange-200 shadow-sm flex items-center gap-2 max-w-full truncate">
-                    <i class="fas fa-user text-sm shrink-0"></i> <span class="truncate">${u}</span>
+                <button onclick="handleLogin('${u}')" class="bg-orange-100 text-gept-dark px-3 py-1.5 rounded-full text-sm font-medium hover:bg-orange-200 transition border border-orange-200 shadow-sm flex items-center gap-1 max-w-full truncate">
+                    <i class="fas fa-user text-xs shrink-0"></i> <span class="truncate">${u}</span>
                 </button>
             `).join('');
         }
@@ -556,35 +526,30 @@
             qList.innerHTML = questionsData.map((q, index) => {
                 const hasCompleted = userProfileData.history[q.id] && userProfileData.history[q.id].feedback;
                 const statusIcon = hasCompleted 
-                    ? `<i class="fas fa-check-circle text-green-500 text-2xl" title="已完成"></i>` 
-                    : `<i class="far fa-circle text-gray-300 text-2xl" title="未完成"></i>`;
+                    ? `<i class="fas fa-check-circle text-green-500 text-lg" title="已完成"></i>` 
+                    : `<i class="far fa-circle text-gray-300 text-lg" title="未完成"></i>`;
                 
                 return `
-                <div class="flex items-center justify-between p-4 sm:p-5 bg-orange-50 rounded-2xl border border-orange-100 hover:shadow-md hover:border-orange-300 transition-all cursor-pointer gap-3 sm:gap-4 group" onclick="selectQuestion('${q.id}')">
-                    <div class="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                        <div class="mt-1 shrink-0 transition-transform group-hover:scale-110">${statusIcon}</div>
+                <div class="flex items-center justify-between p-3 sm:p-4 bg-orange-50 rounded-xl border border-orange-100 hover:shadow-md transition-shadow cursor-pointer gap-2 sm:gap-4" onclick="selectQuestion('${q.id}')">
+                    <div class="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                        <div class="mt-0.5 shrink-0">${statusIcon}</div>
                         <div class="flex-1 min-w-0">
-                            <div class="font-bold text-gept-text text-lg sm:text-xl break-words leading-snug mb-1">${index + 1}. ${q.title}</div>
-                            <div class="text-sm text-orange-600 bg-orange-200 inline-block px-3 py-1 rounded font-medium">${q.type}</div>
+                            <div class="font-bold text-gept-text text-base sm:text-lg break-words leading-snug mb-1">${index + 1}. ${q.title}</div>
+                            <div class="text-xs text-orange-600 bg-orange-200 inline-block px-2 py-0.5 rounded">${q.type}</div>
                         </div>
                     </div>
-                    <button class="bg-white border-2 border-gept-primary text-gept-primary group-hover:bg-gept-primary group-hover:text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-colors shadow-sm shrink-0">
-                        <i class="fas fa-pen text-base sm:text-lg"></i>
+                    <button class="bg-white border border-gept-primary text-gept-primary hover:bg-gept-primary hover:text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shadow-sm shrink-0">
+                        <i class="fas fa-pen text-sm sm:text-base"></i>
                     </button>
                 </div>
                 `;
             }).join('');
         }
 
-        // --- 新增：切換日曆月份 ---
-        window.changeMonth = (delta) => {
-            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
-            renderCalendar();
-        };
-
         function renderCalendar() {
-            const year = currentCalendarDate.getFullYear();
-            const month = currentCalendarDate.getMonth();
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
             
             document.getElementById('calendar-month-year').textContent = `${year}年 ${month + 1}月`;
             
@@ -600,85 +565,14 @@
             
             for (let i = 1; i <= daysInMonth; i++) {
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                // 判斷這一天是否有歷史紀錄
                 const isCompleted = userProfileData.completedDates && userProfileData.completedDates.includes(dateString);
+                const className = isCompleted ? 'calendar-day day-completed' : 'calendar-day day-normal';
                 
-                if(isCompleted) {
-                    html += `<div class="calendar-day day-completed" onclick="openHistoryModal('${dateString}')" title="點擊查看當日紀錄">${i}</div>`;
-                } else {
-                    html += `<div class="calendar-day day-normal">${i}</div>`;
-                }
+                html += `<div class="${className}">${i}</div>`;
             }
             
             calendarBody.innerHTML = html;
         }
-
-        // --- 新增：開啟並渲染歷史紀錄 Modal ---
-        window.openHistoryModal = (dateStr) => {
-            // 找出該日期的所有紀錄
-            const matches = Object.keys(userProfileData.history).filter(qId => {
-                const hist = userProfileData.history[qId];
-                return hist.date === dateStr && hist.feedback;
-            });
-
-            const content = document.getElementById('history-modal-content');
-            document.getElementById('history-modal-title').innerHTML = `<i class="far fa-calendar-check text-gept-primary"></i> ${dateStr} 練習紀錄`;
-
-            if(matches.length === 0) {
-                content.innerHTML = '<div class="text-center text-gray-500 text-lg py-10">此日期沒有完整的批改紀錄。</div>';
-            } else if(matches.length === 1) {
-                showHistoryFeedback(matches[0]);
-            } else {
-                let listHtml = '<div class="space-y-4">';
-                listHtml += '<p class="text-lg text-gray-600 mb-4">您在這天完成了多項練習，請選擇要查看的項目：</p>';
-                matches.forEach(qId => {
-                    const q = questionsData.find(x => x.id === qId);
-                    const title = q ? q.title : `未知題目 (${qId})`;
-                    listHtml += `
-                        <button onclick="showHistoryFeedback('${qId}')" class="w-full text-left p-6 border-2 border-orange-100 rounded-2xl hover:bg-orange-50 hover:border-orange-300 transition-all group flex justify-between items-center shadow-sm">
-                            <span class="font-bold text-xl text-gept-dark group-hover:text-gept-primary transition-colors">${title}</span>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-gept-primary"></i>
-                        </button>
-                    `;
-                });
-                listHtml += '</div>';
-                content.innerHTML = listHtml;
-            }
-
-            document.getElementById('history-modal').classList.remove('hidden');
-        };
-
-        window.showHistoryFeedback = (qId) => {
-            const hist = userProfileData.history[qId];
-            const q = questionsData.find(x => x.id === qId);
-            const content = document.getElementById('history-modal-content');
-            
-            const title = q ? q.title : '練習紀錄';
-            document.getElementById('history-modal-title').innerHTML = `<i class="fas fa-file-alt text-gept-primary"></i> ${title} - 詳細解析`;
-
-            let html = `
-                <div class="mb-8 p-6 bg-orange-50 rounded-2xl border-2 border-orange-100 shadow-inner">
-                    <h4 class="font-bold text-gept-dark mb-3 border-b-2 border-orange-200 pb-2 text-xl"><i class="fas fa-pen-fancy mr-2"></i>您的原創作文</h4>
-                    <p class="whitespace-pre-wrap text-gray-800 leading-relaxed text-lg sm:text-xl font-medium">${hist.draft}</p>
-                </div>
-                <div class="flex items-center gap-4 my-8">
-                    <div class="flex-grow h-px bg-orange-200"></div>
-                    <span class="text-orange-400 text-lg font-bold">AI 老師解析</span>
-                    <div class="flex-grow h-px bg-orange-200"></div>
-                </div>
-                <div class="markdown-body bg-white p-2">
-                    ${marked.parse(hist.feedback)}
-                </div>
-                <div class="mt-8 text-center">
-                   <button onclick="closeHistoryModal()" class="px-8 py-3 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-bold text-lg transition-colors shadow-sm">關閉視窗</button>
-                </div>
-            `;
-            content.innerHTML = html;
-        };
-
-        window.closeHistoryModal = () => {
-            document.getElementById('history-modal').classList.add('hidden');
-        };
 
         window.selectQuestion = (qId) => {
             appState.selectedQuestionId = qId;
@@ -746,18 +640,13 @@
             document.getElementById('ai-loading').classList.remove('hidden');
             
             try {
-                // 先只保存草稿
                 await saveProgress(answer, null);
-                
                 const feedbackData = await callGeminiAPI(q.prompt, answer);
                 renderFeedback(feedbackData);
-                
-                // 批改完成後完整保存(包含 draft 與 feedback)
                 await saveProgress(answer, feedbackData);
-                
                 appState.showView('feedback');
                 window.scrollTo(0, 0);
-                showToast("批改完成！紀錄已自動保存至雲端。", "success");
+                showToast("批改完成！", "success");
 
             } catch (e) {
                 console.error("Submit Error:", e);
@@ -779,13 +668,11 @@
             }
         };
 
-        // --- 優化：確實儲存 date 屬性供日曆查詢 ---
         async function saveProgress(draft, feedback) {
             if(!currentUserName) return;
             
             const qId = appState.selectedQuestionId;
             const now = new Date();
-            // 建立標準 YYYY-MM-DD 格式以供日曆精準比對
             const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
             const timeStr = now.toLocaleString('zh-TW');
 
@@ -793,12 +680,10 @@
             newHistory[qId] = {
                 draft: draft,
                 lastUpdate: timeStr,
-                date: dateStr, // 新增精確的日期屬性
                 feedback: feedback || (newHistory[qId] ? newHistory[qId].feedback : null)
             };
 
             let newDates = [...(userProfileData.completedDates || [])];
-            // 當 feedback 存在時，確保這天在日曆上會亮起
             if (feedback && !newDates.includes(dateStr)) {
                 newDates.push(dateStr);
             }
@@ -811,6 +696,7 @@
         }
 
         async function callGeminiAPI(questionPrompt, userAnswer) {
+            // --- AI Prompt 已完全替換為您提供的教學版 Markdown 格式 ---
             const systemPrompt = `你是一位專業、親切且充滿熱忱的英文寫作老師。你的目標是幫助學生找出英文作文中的盲點，並提供最詳細、易懂、且視覺排版豐富的解析報告。
 
 請務必使用「繁體中文」進行解說，並嚴格遵循以下的 Markdown 輸出格式與架構，不可遺漏任何一個單元。為了確保在各種 App 介面上的相容性，請不要使用 HTML 標籤，請完全依賴 Markdown 與 Emoji 來做視覺區分。
@@ -854,6 +740,9 @@ Hello! 我是你的專屬英文老師 👩‍🏫。針對你這次的寫作，�
 
             const userMessage = `題目提示：\n${questionPrompt}\n\n學生作答：\n${userAnswer}`;
 
+            // ==========================================
+            // 🚨 動態讀取金鑰邏輯
+            // ==========================================
             const activeKey = localStorage.getItem('gemini_api_key') || apiKey;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKey}`;
             
@@ -861,7 +750,8 @@ Hello! 我是你的專屬英文老師 👩‍🏫。針對你這次的寫作，�
                 contents: [{ parts: [{ text: userMessage }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 generationConfig: {
-                    temperature: 0.3
+                    // 移除 JSON 限制，讓 AI 自由發揮 Markdown
+                    temperature: 0.3 // 稍微提高一點溫度，讓老師語氣更生動
                 }
             };
 
@@ -880,6 +770,7 @@ Hello! 我是你的專屬英文老師 👩‍🏫。針對你這次的寫作，�
                     
                     const result = await response.json();
                     let textResult = result.candidates[0].content.parts[0].text;
+                    // 回傳完整的 Markdown 字串
                     return textResult;
 
                 } catch (e) {
@@ -895,10 +786,11 @@ Hello! 我是你的專屬英文老師 👩‍🏫。針對你這次的寫作，�
             const contentContainer = document.getElementById('fb-content');
             
             if (!markdownData) {
-                contentContainer.innerHTML = `<div class="p-6 bg-red-50 text-red-700 rounded-xl text-lg font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> 批改報告讀取失敗，請重新提交。</div>`;
+                contentContainer.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-lg"><i class="fas fa-exclamation-triangle mr-2"></i> 批改報告讀取失敗，請重新提交。</div>`;
                 return;
             }
 
+            // 使用 marked.js 將 AI 回傳的 Markdown 轉換為 HTML 並渲染
             contentContainer.innerHTML = marked.parse(markdownData);
         }
 
