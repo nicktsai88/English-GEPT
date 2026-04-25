@@ -343,7 +343,7 @@
         let currentUserName = null;
         let isFirebaseReady = false;
         
-        // 變更：改為從資料庫動態載入，徹底移除硬編碼的備案題庫，確保程式碼極度輕量
+        // 變更：改為從資料庫動態載入，不再硬編碼
         let questionsData = []; 
         let userProfileData = { historyIndex: {}, completedDates: [] };
         let unsubscribeUser = null;
@@ -429,28 +429,25 @@
                         // 2. 自動從雲端載入所有題庫
                         await loadQuestionsFromCloud();
                         
-        // --- 升級：從雲端動態拉取題庫 (無硬編碼備案版) ---
+                        updateConnectionStatus('success', '系統就緒');
+                    } else {
+                        isFirebaseReady = false;
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                updateConnectionStatus('error', '連線失敗');
+                showToast('無法連線至資料庫', 'error');
+            }
+        }
+
+        // --- 升級：從雲端動態拉取題庫 ---
         async function loadQuestionsFromCloud() {
-            const qList = document.getElementById('question-list');
             try {
                 const qRef = collection(db, 'artifacts', appId, 'public', 'data', COL_QUESTIONS);
                 const qSnap = await getDocs(qRef);
                 questionsData = [];
                 
-                if (qSnap.empty) {
-                    console.warn("雲端題庫目前為空。");
-                    document.getElementById('total-q-count').textContent = "0";
-                    if (appState.currentView === 'dashboard') {
-                        qList.innerHTML = `
-                            <div class="text-center py-12 bg-orange-50 rounded-2xl border border-orange-100">
-                                <i class="fas fa-database text-4xl text-orange-300 mb-4"></i>
-                                <h3 class="text-xl font-bold text-gept-dark mb-2">雲端題庫尚未建立</h3>
-                                <p class="text-gray-500 text-lg">請執行 <b>migration_tool.html</b> 來初始化題庫資料。</p>
-                            </div>`;
-                    }
-                    return;
-                }
-
                 qSnap.forEach(doc => {
                     questionsData.push({ id: doc.id, ...doc.data() });
                 });
@@ -470,15 +467,7 @@
                 }
             } catch (error) {
                 console.error("Failed to load questions:", error);
-                document.getElementById('total-q-count').textContent = "Error";
-                if (appState.currentView === 'dashboard') {
-                    qList.innerHTML = `
-                        <div class="text-center py-12 bg-red-50 rounded-2xl border border-red-100">
-                            <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
-                            <h3 class="text-xl font-bold text-red-700 mb-2">無法連線至雲端題庫</h3>
-                            <p class="text-red-500 text-lg">請檢查網路連線或資料庫權限設定。</p>
-                        </div>`;
-                }
+                showToast("載入題庫失敗，請重新整理頁面。", "error");
             }
         }
 
