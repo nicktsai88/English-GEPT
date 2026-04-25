@@ -104,7 +104,6 @@
     </header>
 
     <!-- Main Content Area -->
-    <!-- 同樣改用 w-[96%] 放大寬度 -->
     <main class="flex-grow w-[96%] xl:w-[98%] max-w-none mx-auto px-4 py-8 relative flex flex-col items-center">
 
         <!-- API Key Modal -->
@@ -210,7 +209,6 @@
         </div>
 
         <!-- 3. Test Interface View -->
-        <!-- 寬度也放寬為 92% -->
         <div id="test-view" class="hidden view-section w-[92%] xl:w-[85%] max-w-[1400px] mx-auto space-y-6">
             <button onclick="appState.showView('dashboard')" class="text-gept-dark hover:text-gept-primary mb-2 inline-flex items-center gap-2 font-bold text-lg transition-colors bg-white px-4 py-2 rounded-lg shadow-sm border border-orange-100 w-fit">
                 <i class="fas fa-arrow-left"></i> 返回列表
@@ -332,7 +330,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'gept-writing-mock-v1'; 
         const apiKey = ""; 
 
-        // 升級後的資料表結構設定
+        // 資料表結構設定
         const COL_QUESTIONS = 'GEPT-Questions';
         const COL_USERS = 'GEPT-Users';              // 存放輕量級索引與日曆打卡
         const COL_SUBMISSIONS = 'GEPT-Submissions';  // 存放沉重的草稿與批改報告
@@ -343,9 +341,8 @@
         let currentUserName = null;
         let isFirebaseReady = false;
         
-        // 變更：改為從資料庫動態載入，徹底移除硬編碼的備案題庫，確保程式碼極度輕量
         let questionsData = []; 
-        let questionsStatus = 'loading'; // 狀態追蹤：'loading', 'loaded', 'empty', 'error'
+        let questionsStatus = 'loading'; // 狀態追蹤：'loading', 'loaded', 'error'
         let userProfileData = { historyIndex: {}, completedDates: [] };
         let unsubscribeUser = null;
         
@@ -427,7 +424,7 @@
                         // 1. 下載全域用戶清單
                         listenToGlobalUsers();
                         
-                        // 2. 自動從雲端載入所有題庫
+                        // 2. 觸發拉取題庫邏輯
                         await loadQuestionsFromCloud();
                         
                         updateConnectionStatus('success', '系統就緒');
@@ -442,18 +439,49 @@
             }
         }
 
-        // --- 升級：從雲端動態拉取題庫 (無硬編碼備案版 + 狀態追蹤修復) ---
+        // --- 無敵自我修復：當題庫為空時，自動上傳種子資料建置題庫 ---
+        const seedData = [
+            { id: "q1", type: "Guided Writing (引導寫作)", title: "例題 I - 父母的獎勵", instructions: "請依下面所提供的文字提示寫一篇英文作文，長度約 120 字（8 至 12 個句子）。", prompt: "一般來說，孩子表現良好時，父母常會給孩子獎勵。請寫一篇文章說明：\n(1) 你表現好的時候，你的父母通常會用哪些方法獎勵你？你覺得這些方法有效、適當嗎？\n(2) 如果有一天你為人父母，你會用相同的獎勵方式嗎？", sample: "When I perform well, my parents usually reward me with encouraging words and sometimes a special meal at my favorite restaurant. I find these methods both effective and appropriate because they make me feel valued without spoiling me with expensive gifts. The verbal praise boosts my confidence, while the special meal serves as a memorable celebration.\n\n【中文翻譯】\n當我表現好時，我的父母通常會用鼓勵的話語來獎勵我，有時也會帶我去我最喜歡的餐廳吃一頓特別的大餐。我覺得這些方法既有效又適當，因為它們讓我感到受重視，而不會用昂貴的禮物寵壞我。口頭上的讚美提升了我的自信心，而特別的餐點則作為一次難忘的慶祝。\n\nIf I become a parent someday, I will likely use similar rewarding methods. I believe that emotional support and shared experiences are more precious than material items. However, I might also incorporate a system where my children can earn extra free time for their hobbies, encouraging them to pursue their interests.\n\n【中文翻譯】\n如果有一天我為人父母，我很可能也會使用類似的獎勵方式。我相信情感上的支持和共同的經歷比物質更珍貴。然而，我也可能會加入一種制度，讓孩子們能為自己的興趣賺取額外的空閒時間，鼓勵他們追求自己的愛好。" },
+            { id: "q2", type: "Email (信函寫作)", title: "例題 II - 給轉學筆友的建議", instructions: "請依以下提示寫一封英文 email，長度約 120 字（8 至 12 個句子）。此信可以是一個完整的段落，也可以分段。", prompt: "你住在美國的筆友 Ted 最近剛轉學，正在煩惱新學校的交友問題。請寫一封英文 email 給他，信的內容必須包括以下兩點：\n(1) 分享你適應新環境的經驗。\n(2) 建議他幾個交新朋友的方法。", sample: "I was sorry to hear that you are struggling to make friends at your new school. I know exactly how you feel, as I experienced the same anxiety when I transferred to my current high school two years ago. Initially, I felt lonely, but I gradually adapted by giving myself time and keeping an open mind.\n\n【中文翻譯】\n聽到你在新學校交友遇到困難，我感到很遺憾。我完全了解你的感受，因為兩年前我轉學到現在的高中時，也經歷過同樣的焦慮。起初，我感到很孤單，但我給自己時間並保持開放的心態，逐漸適應了。\n\nTo make new friends, I suggest you join some school clubs that match your interests, like the basketball team or the photography club. This is a great way to meet people who share similar hobbies. Additionally, don't be afraid to strike up a conversation with your classmates during breaks. A simple smile and a friendly \"hello\" can go a long way. Hang in there, and things will get better soon!\n\n【中文翻譯】\n為了結交新朋友，我建議你加入一些符合你興趣的學校社團，像是籃球隊或攝影社。這是認識有相同嗜好的人的絕佳方式。此外，不要害怕在下課時間主動與同學攀談。一個簡單的微笑和友善的「你好」會有很大的幫助。撐著點，事情很快就會好轉的！" },
+            { id: "q3", type: "Guided Writing (引導寫作)", title: "智慧型手機的影響", instructions: "字數約 120 字。可以分段。", prompt: "智慧型手機為現代人帶來便利，但也衍生出一些問題。請寫一篇文章：\n(1) 說明智慧型手機為你的生活帶來的優點與缺點。\n(2) 你認為應該如何健康地使用智慧型手機？", sample: "Smartphones have brought both significant benefits and drawbacks to my life. On the positive side, they provide immense convenience. I can easily keep in touch with friends, search for information instantly, and use various apps to manage my schedule. However, the downside is that I sometimes become too distracted by social media, which affects my concentration on studies and leads to eye strain.\n\n【中文翻譯】\n智慧型手機為我的生活帶來了顯著的好處與壞處。在積極的一面，它們提供了極大的便利。我可以輕鬆地與朋友保持聯繫、即時搜尋資訊，並使用各種應用程式來管理我的行程。然而，缺點是我有時會因為社群媒體而過度分心，這影響了我讀書的專注力，並導致眼睛疲勞。\n\nTo use smartphones healthily, I believe we should set clear boundaries. For instance, we can turn off unnecessary notifications while studying and avoid using screens an hour before bedtime. By practicing self-discipline, we can enjoy the convenience of technology without letting it control our lives.\n\n【中文翻譯】\n為了健康地使用智慧型手機，我認為我們應該設定明確的界線。例如，我們可以在讀書時關閉不必要的通知，並避免在睡前一小時使用螢幕。透過練習自律，我們可以享受科技的便利，而不讓它控制我們的生活。" },
+            { id: "q4", type: "Email (信函寫作)", title: "取消約會與道歉", instructions: "字數約 120 字。上下款不計。", prompt: "你原本和外國朋友 Sarah 約好這週末一起去參觀博物館，但你因為生病無法前往。請寫一封 email：\n(1) 解釋你無法赴約的原因並表達歉意。\n(2) 提議下週或未來的另一個時間重新安排行程。", sample: "I am writing to sincerely apologize for having to cancel our plans to visit the museum this weekend. Unfortunately, I have caught a severe cold and my doctor has advised me to stay home and rest. I was really looking forward to our trip and I feel terrible for letting you down at the last minute.\n\n【中文翻譯】\n我寫這封信是要為必須取消這週末我們參觀博物館的計畫致上最誠摯的歉意。很不幸地，我得了重感冒，醫生建議我留在家裡休息。我原本非常期待我們的旅程，對於在最後一刻讓你失望，我感到非常糟糕。\n\nWould it be possible to reschedule our visit for next Saturday? I should be fully recovered by then. If next weekend doesn't work for you, please let me know when you are available. Once again, I am so sorry for the inconvenience, and I hope we can meet up soon.\n\n【中文翻譯】\n我們有可能將參觀重新安排在下週六嗎？到那時我應該已經完全康復了。如果下週末你不行，請告訴我你有空的時間。對於造成的不便我再次感到抱歉，希望我們能很快見面。" },
+            { id: "q5", type: "Guided Writing (引導寫作)", title: "網路購物 vs 實體店面", instructions: "字數約 120 字。", prompt: "現代人購物的管道多元。請寫一篇文章比較：\n(1) 你比較喜歡網路購物還是去實體店面購物？為什麼？\n(2) 描述一次讓你印象深刻的購物經驗（好或壞皆可）。", sample: "I generally prefer online shopping to visiting physical stores. The primary reason is the incredible convenience it offers; I can browse products, compare prices, and read reviews at any time without leaving my room. Furthermore, online platforms often provide a wider variety of items than local shops.\n\n【中文翻譯】\n總體而言，我比較喜歡網路購物，勝過去實體店面。最主要的原因是它提供了難以置信的便利性；我可以在任何時間瀏覽商品、比較價格並閱讀評論，而不需要離開我的房間。此外，網路平台通常比當地商店提供更多樣化的商品。\n\nA memorable experience I had was when I ordered a winter coat online last year. The delivery was remarkably fast, and the coat fit perfectly. However, the best part was that the seller included a handwritten thank-you note and a small pair of gloves as a gift. This unexpected personal touch made the online shopping experience surprisingly warm and delightful.\n\n【中文翻譯】\n我有一個難忘的經驗是去年在網路上訂購了一件冬裝外套。送貨速度非常快，而且外套非常合身。然而，最棒的部分是賣家附上了一張手寫的感謝卡和一小副手套作為禮物。這種意想不到的人情味讓這次的網路購物體驗出奇地溫暖與令人愉悅。" },
+            { id: "q6", type: "Email (信函寫作)", title: "邀請外國朋友來台灣", instructions: "字數約 120 字。", prompt: "你的外國朋友 John 計畫來亞洲旅遊。請寫一封信邀請他來台灣：\n(1) 推薦一個台灣的特色景點並說明原因。\n(2) 介紹一項他一定要品嚐的台灣美食。", sample: "I heard you are planning a trip to Asia, and I would love to invite you to visit Taiwan! It is a beautiful island with friendly people and amazing sights.\n\n【中文翻譯】\n我聽說你正在計畫一趟亞洲之旅，我非常樂意邀請你來台灣玩！這是一個擁有友善人民和迷人風景的美麗島嶼。\n\nIf you come, I highly recommend visiting Taroko Gorge in Hualien. The marble canyons are absolutely breathtaking, and walking along the trails offers an unforgettable natural experience. Besides the scenery, you must try our famous beef noodle soup. The rich, savory broth combined with tender beef and chewy noodles is a true masterpiece of Taiwanese cuisine. I would be thrilled to be your tour guide. Let me know if you decide to come!\n\n【中文翻譯】\n如果你來，我強烈推薦參觀花蓮的太魯閣峽谷。大理石峽谷絕對令人嘆為觀止，沿著步道行走能提供難忘的大自然體驗。除了風景，你一定要嚐嚐我們著名的牛肉麵。濃郁美味的湯頭，加上軟嫩的牛肉和有嚼勁的麵條，真的是台灣美食的傑作。如果你決定來，我會非常高興能成為你的導遊。讓我知道你的決定！" },
+            { id: "q7", type: "Guided Writing (引導寫作)", title: "日常生活中的環保", instructions: "字數約 120 字。", prompt: "環境保護是全球關注的議題。請寫一篇文章說明：\n(1) 在日常生活中，你做了哪些具體的環保行動？\n(2) 你認為每個人微小的環保舉動能帶來什麼改變？", sample: "Environmental protection is a crucial issue, and I try to do my part in daily life. Specifically, I always carry a reusable water bottle and canvas shopping bags to reduce plastic waste. Additionally, I make it a habit to turn off lights and unplug appliances when they are not in use to conserve energy.\n\n【中文翻譯】\n環境保護是一個至關重要的議題，而我試著在日常生活中盡一份心力。具體來說，我總是攜帶可重複使用的水瓶和帆布購物袋，以減少塑膠垃圾。此外，我養成了一個習慣：不使用時隨手關燈並拔掉電器插頭以節約能源。\n\nI firmly believe that even minor eco-friendly actions can lead to significant changes. When millions of people adopt these small habits, the cumulative effect can massively reduce global carbon emissions and pollution. Ultimately, protecting the earth starts with individual responsibility, and every little effort counts towards a sustainable future.\n\n【中文翻譯】\n我堅信，即使是微小的環保行動也能帶來重大的改變。當數百萬人養成這些小習慣時，累積的效果將能大幅減少全球碳排放與污染。最終，保護地球始於個人責任，每一個微小的努力都對永續發展的未來有所貢獻。" },
+            { id: "q8", type: "Email (信函寫作)", title: "向飯店尋找遺失物", instructions: "字數約 120 字。", prompt: "你上週在國外旅遊時入住一間飯店，退房回國後發現把一件重要的外套忘在房間了。請寫信給飯店：\n(1) 描述該外套的特徵以及你住的房號與日期。\n(2) 詢問他們是否尋獲，並說明你願意支付寄回的運費。", sample: "I am writing to inquire about an item I believe I left behind during my recent stay at your hotel. I checked out on May 15th from room 302.\n\n【中文翻譯】\n我寫這封信是想詢問一件我認為在最近入住貴飯店時遺留的物品。我是在 5 月 15 日從 302 號房退房的。\n\nI am missing a dark blue, waterproof jacket with a silver zipper. It is very important to me as it was a birthday gift. Could you please check with your housekeeping department to see if it was found in the room or the closet? If it has been located, I would be extremely grateful if you could arrange to have it shipped to my home address in Taiwan. I will, of course, cover all the shipping expenses. Thank you for your assistance.\n\n【中文翻譯】\n我弄丟了一件深藍色、有銀色拉鍊的防水外套。它對我非常重要，因為這是一份生日禮物。您能幫忙向房務部確認是否在房間或衣櫥裡找到它嗎？如果找到了，如果您能安排將它寄到我在台灣的家庭地址，我將不勝感激。當然，我會負擔所有的運費。感謝您的協助。" },
+            { id: "q9", type: "Guided Writing (引導寫作)", title: "學習第二外語的重要性", instructions: "字數約 120 字。", prompt: "除了英文，越來越多人學習第二外語（如日文、韓文、法文等）。請說明：\n(1) 你有學習第二外語的經驗或計畫嗎？為什麼選擇該語言？\n(2) 學習多種語言對未來的職涯或生活有什麼幫助？", sample: "Besides English, I have been planning to learn Japanese as my second foreign language. I chose Japanese because I am deeply fascinated by Japanese culture, especially their animation and traditional arts. Furthermore, traveling to Japan is one of my biggest dreams, and knowing the language would make the trip much more enjoyable.\n\n【中文翻譯】\n除了英文之外，我一直計畫學習日文作為我的第二外語。我選擇日文是因為我對日本文化深深著迷，特別是他們的動畫和傳統藝術。此外，去日本旅遊是我最大的夢想之一，而懂這門語言會讓旅程更加愉快。\n\nI believe that mastering multiple languages is highly beneficial for both career and life. In the workplace, being multilingual makes you a more competitive candidate in the global market, opening doors to international companies. In life, it allows you to connect with people from diverse backgrounds and understand different cultures from a broader perspective.\n\n【中文翻譯】\n我相信精通多種語言對職涯和生活都非常有利。在職場上，具備多語能力能讓你在全球市場中成為更具競爭力的候選人，為進入國際公司開啟大門。在生活中，它能讓你與不同背景的人建立聯繫，並從更廣闊的視角了解不同的文化。" },
+            { id: "q10", type: "Email (信函寫作)", title: "感謝寄宿家庭", instructions: "字數約 120 字。", prompt: "你在英國遊學一個月，期間住在一個寄宿家庭(Mr. and Mrs. Smith)。現在你已回到台灣，請寫信給他們：\n(1) 感謝他們這段期間的照顧，並提及一件令你印象深刻的事。\n(2) 分享你目前的近況，並邀請他們未來有機會來台灣玩。", sample: "I am writing to let you know that I have arrived in Taiwan safely. I want to express my deepest gratitude for your warm hospitality during my one-month stay in the UK. You made me feel like part of the family. I will never forget the weekend we spent baking apple pie together; it was the most delicious pie I have ever tasted!\n\n【中文翻譯】\n我寫這封信是想讓你們知道我已經安全抵達台灣了。對於我在英國停留一個月期間你們熱情的款待，我想表達最深的謝意。你們讓我感覺就像是一家人。我永遠不會忘記我們一起烤蘋果派的那個週末；那是我嚐過最美味的派！\n\nI have now returned to my normal school routine and am busy catching up on my studies. If you ever plan to travel to Asia, please consider visiting Taiwan. I would be more than happy to show you around and treat you to some traditional Taiwanese food. Keep in touch!\n\n【中文翻譯】\n我現在已經回歸正常的學校作息，正忙著趕上我的課業。如果未來你們有計畫到亞洲旅遊，請考慮來台灣玩。我會非常樂意帶你們四處逛逛，並請你們品嚐一些傳統的台灣美食。保持聯絡！" }
+        ];
+
         async function loadQuestionsFromCloud() {
             questionsStatus = 'loading';
+            const qList = document.getElementById('question-list');
             try {
                 const qRef = collection(db, 'artifacts', appId, 'public', 'data', COL_QUESTIONS);
                 const qSnap = await getDocs(qRef);
                 questionsData = [];
                 
                 if (qSnap.empty) {
-                    console.warn("雲端題庫目前為空。");
-                    questionsStatus = 'empty';
-                    document.getElementById('total-q-count').textContent = "0";
+                    console.log("雲端題庫為空，開始自動建置...");
+                    if (appState.currentView === 'dashboard') {
+                        qList.innerHTML = `
+                            <div class="text-center py-12 bg-orange-50 rounded-2xl border border-orange-100">
+                                <i class="fas fa-cloud-upload-alt text-5xl text-orange-400 mb-4 animate-bounce"></i>
+                                <h3 class="text-2xl font-bold text-gept-dark mb-2">正在為您自動建置雲端題庫...</h3>
+                                <p class="text-gray-500 text-lg">首次進入此空間需要幾秒鐘進行初始化，請稍候。</p>
+                            </div>`;
+                    }
+                    
+                    // 自動上傳 10 題種子資料
+                    for (const q of seedData) {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', COL_QUESTIONS, q.id);
+                        await setDoc(docRef, q);
+                    }
+                    
+                    showToast('✅ 雲端題庫自動建置完成！', 'success');
+                    
+                    // 資料建置完成後，遞迴重新讀取一次確保載入成功
+                    return loadQuestionsFromCloud();
                 } else {
                     qSnap.forEach(doc => {
                         questionsData.push({ id: doc.id, ...doc.data() });
@@ -475,7 +503,6 @@
                 document.getElementById('total-q-count').textContent = "Error";
             }
             
-            // 如果已經在 Dashboard 頁面（例如登入後重新整理），則刷新列表
             if (appState.currentView === 'dashboard') {
                 renderDashboard();
             }
@@ -615,16 +642,6 @@
             
             if (questionsStatus === 'loading') {
                 qList.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fas fa-spinner fa-spin text-2xl mb-3"></i><br>正在從雲端載入題庫...</div>';
-                return;
-            }
-
-            if (questionsStatus === 'empty') {
-                qList.innerHTML = `
-                    <div class="text-center py-12 bg-orange-50 rounded-2xl border border-orange-100">
-                        <i class="fas fa-database text-4xl text-orange-300 mb-4"></i>
-                        <h3 class="text-xl font-bold text-gept-dark mb-2">雲端題庫尚未建立</h3>
-                        <p class="text-gray-500 text-lg">請點擊右方開啟 <b>migration_tool.html</b> 來初始化題庫資料。<br>上傳完成後，重新整理本頁面即可。</p>
-                    </div>`;
                 return;
             }
 
